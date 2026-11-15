@@ -95,7 +95,7 @@
   for (i = 0; i < ui.cameras.length; i++) put(ui.cameras[i].entity, 'idle');
 
   var version = 1, waiters = [], delay = 0;
-  function snapshot() { return { v: version, ok: true, at: Math.round(new Date().getTime() / 1000), tz: -new Date().getTimezoneOffset(), dry: false, e: E }; }
+  function snapshot() { var t = Math.round(new Date().getTime() / 1000); return { v: version, ok: true, at: t, tz: -new Date().getTimezoneOffset(), dry: false, kindle: { b: 72, c: 0, at: t }, e: E }; }
   function set(id, s, attrs) {
     var x = E[id]; if (!x) return;
     x.s = s; x.c = Math.round(new Date().getTime() / 1000);

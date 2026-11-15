@@ -68,8 +68,10 @@ function tzOffset() {
   return Math.round((local - utc) / 60000);
 }
 
+let kindle = null;   // { b: battery %, c: charging 0/1, at: epoch s } reported by the Kindle's launcher script
+
 function snapshot() {
-  return { v: version, ok: haOnline, at: lastSync / 1000 | 0, tz: tzOffset(), dry: DRY_RUN, e: cache };
+  return { v: version, ok: haOnline, at: lastSync / 1000 | 0, tz: tzOffset(), dry: DRY_RUN, kindle, e: cache };
 }
 
 // ---------- Home Assistant websocket ----------
@@ -244,6 +246,15 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, Object.assign({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache', ETag: page.etag, 'Content-Length': body.length,
       'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" }, gz ? { 'Content-Encoding': 'gzip' } : {}, extra));
     return res.end(req.method === 'HEAD' ? undefined : body);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/kindle') {
+    // The Kindle reports its own battery here (plain GET from busybox wget); only two small numbers are accepted
+    const b = parseInt(url.searchParams.get('b'), 10), c = url.searchParams.get('c') === '1' ? 1 : 0;
+    if (!(b >= 0 && b <= 100)) return json(req, res, 400, { ok: false });
+    kindle = { b, c, at: Date.now() / 1000 | 0 };
+    bump();
+    return json(req, res, 200, { ok: true });
   }
 
   if (req.method === 'GET' && url.pathname === '/api/cam') {

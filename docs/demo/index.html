@@ -291,6 +291,7 @@ function alerts() {
   if (UI.lock && UI.lock.battery) { var b = N(UI.lock.battery); out.push({ name: 'Door lock battery', rule: 'below ' + al.lockBattery + '%', hot: b !== null && b < al.lockBattery, now: b + '%' }); }
   if (UI.wifi) out.push({ name: 'Internet', rule: 'mesh WAN down', hot: S(UI.wifi.wan) === 'off', now: 'down' });
   if (UI.vacuum && UI.vacuum.sensorDirty) { var sd = N(UI.vacuum.sensorDirty); out.push({ name: 'Vacuum sensors', rule: 'cleaning due', hot: sd !== null && sd <= al.vacuumSensorHours, now: 'within ' + Math.round(sd) + ' h' }); }
+  if (ST.kindle) { var kb = ST.kindle.b, kl = al.kindleBattery || 20; out.push({ name: 'Kindle battery', rule: 'below ' + kl + '%', hot: kb < kl && !ST.kindle.c, now: kb + '%' }); }
   // A dismissed alert stays dismissed until it clears; the next time it fires it counts again
   var ack = loadAck(), changed = false;
   for (i = 0; i < out.length; i++) {
@@ -304,6 +305,12 @@ function alerts() {
 function rank(a) { return a.hot ? (a.acked ? 1 : 2) : 0; }
 function loadAck() { try { return JSON.parse(localStorage.getItem('ink-ack') || '{}'); } catch (e) { return {}; } }
 function saveAck(a) { try { localStorage.setItem('ink-ack', JSON.stringify(a)); } catch (e) {} }
+// Battery reported by the Kindle's launcher script; hidden when there is no recent report (plain browser use)
+function kindleBattery() {
+  var k = ST.kindle;
+  if (!k || now() / 1000 - k.at > 1800) return '';
+  return 'Kindle ' + k.b + '%' + (k.c ? ' charging' : '') + ' · ';
+}
 function hotCount(list) { var n = 0; for (var i = 0; i < list.length; i++) if (list[i].hot && !list[i].acked) n++; return n; }
 function ackedCount(list) { var n = 0; for (var i = 0; i < list.length; i++) if (list[i].acked) n++; return n; }
 function secondsUntil(hhmm) {
@@ -521,7 +528,7 @@ function render() {
   var hot = hotCount(al);
   var oldStill = app.querySelector('img.still');
   app.innerHTML =
-    '<div class="kbar"><span>' + (ST.dry ? 'TEST MODE · taps are not sent' : esc(TITLE)) + '</span><span>' + hm(d) + '</span></div>' +
+    '<div class="kbar"><span>' + (ST.dry ? 'TEST MODE · taps are not sent' : esc(TITLE)) + '</span><span>' + kindleBattery() + hm(d) + '</span></div>' +
     (!netOk ? '<div class="offline">Panel server unreachable · retrying</div>' : !haOk ? '<div class="offline">Home Assistant unreachable · last known values</div>' : '') +
     controlPage(al) + housePage(al) + energyPage() +
     '<div class="nav">' + tab('control', 'grid', 'Control') + tab('house', 'home', 'House' + (hot ? ' · ' + hot : '')) + tab('energy', 'chart', 'Energy') + '</div>' +

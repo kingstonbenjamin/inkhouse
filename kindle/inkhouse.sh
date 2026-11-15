@@ -19,6 +19,11 @@ log() { echo "$(date +%H:%M:%S) $*" >> "$LOG"; }
 : > "$LOG"
 refresh_screen() { eips -c >/dev/null 2>&1; eips -c >/dev/null 2>&1; }
 pd() { lipc-set-prop com.lab126.powerd "$1" "$2" >/dev/null 2>&1; }
+# Tell the panel server the Kindle's battery, so the panel can show it
+report_battery() {
+  b=$(lipc-get-prop com.lab126.powerd battLevel 2>/dev/null); c=$(lipc-get-prop com.lab126.powerd isCharging 2>/dev/null)
+  wget -q -T 5 -O /dev/null "${PANEL_URL}api/kindle?b=${b:-0}&c=${c:-0}" >/dev/null 2>&1 &
+}
 
 if [ ! -x /usr/bin/chromium/bin/kindle_browser ]; then
   eips 1 1 "Inkhouse: this Kindle has no built-in browser"
@@ -29,31 +34,35 @@ fi
 LIGHT=$(lipc-get-prop com.lab126.powerd flIntensity 2>/dev/null)
 [ -z "$LIGHT" ] && LIGHT=6
 
+start_browser() {
+  XDG_CONFIG_HOME="/mnt/us/system/browser/" LD_LIBRARY_PATH="/usr/bin/chromium/lib:/usr/bin/chromium/usr/lib:/usr/lib/" \
+  /usr/bin/chromium/bin/kindle_browser "$PANEL_URL" --no-zygote --no-sandbox --single-process \
+    --skia-resource-cache-limit-mb=64 --disable-gpu --in-process-gpu --disable-gpu-sandbox \
+    --disable-gpu-compositing --force-device-scale-factor=1 --js-flags=jitless \
+    --content-shell-hide-toolbar --content-shell-host-window-cord=0,215 --force-gpu-mem-available-mb=32 \
+    --enable-grayscale-mode --enable-low-end-device-mode --enable-low-res-tiling \
+    --disable-site-isolation-trials >/dev/null 2>&1 &
+  browser_pid=$!
+}
+
+log "starting, light $LIGHT"
+# WHY: the browser takes about 10 s to load; starting it before stopping the Kindle UI lets both happen at once
+start_browser
+log "browser launched"
+
 # Stop the Kindle UI so the browser gets the whole screen
-refresh_screen
 trap "" TERM
 stop lab126_gui
 usleep 1250000
 trap - TERM
 log "Kindle UI stopped"
-refresh_screen
 # WHY: stopping the UI also stops the touch keyboard service; restart it so text fields still work
 start kb >/dev/null 2>&1
 pd preventScreenSaver 1
-
-log "started, light $LIGHT"
-
-export XDG_CONFIG_HOME="/mnt/us/system/browser/"
-export LD_LIBRARY_PATH="/usr/bin/chromium/lib:/usr/bin/chromium/usr/lib:/usr/lib/"
-/usr/bin/chromium/bin/kindle_browser "$PANEL_URL" --no-zygote --no-sandbox --single-process \
-  --skia-resource-cache-limit-mb=64 --disable-gpu --in-process-gpu --disable-gpu-sandbox \
-  --disable-gpu-compositing --force-device-scale-factor=1 --js-flags=jitless \
-  --content-shell-hide-toolbar --content-shell-host-window-cord=0,215 --force-gpu-mem-available-mb=32 \
-  --enable-grayscale-mode --enable-low-end-device-mode --enable-low-res-tiling \
-  --disable-site-isolation-trials >/dev/null 2>&1 &
-browser_pid=$!
-unset LD_LIBRARY_PATH
-log "browser started"
+# Safety: if stopping the UI took the browser down with it, start it again
+if ! kill -0 "$browser_pid" 2>/dev/null; then log "browser was closed by the UI stop, starting it again"; start_browser; fi
+log "browser running"
+( sleep 15; report_battery ) &
 
 # ---- Event sources, each appends one line per event to one queue file ----
 # WHY: one queue read by one loop means the sleep/wake state lives in a single place,
@@ -93,12 +102,21 @@ main_loop() {
       case "$ev" in
         selftest) : > /tmp/inkhouse.ok ;;
         *magSensorClosed*) go_to_sleep ;;
-        *magSensorOpened*) [ "$state" != awake ] && pd wakeUp 1 ;;
+        *magSensorOpened*)
+          if [ "$state" = sleeping ]; then
+            # WHY: the cover opened before the Kindle finished going to sleep; cancel instead of waiting
+            state=awake; last_touch=$now; wake_time=$now
+            pd preventScreenSaver 1
+            pd flIntensity "$(cat /tmp/inkhouse.light 2>/dev/null || echo "$LIGHT")"
+          fi
+          pd wakeUp 1
+          ;;
         *goingToScreenSaver*) state=asleep ;;
         *outOfScreenSaver*)
           state=awake; last_touch=$now; wake_time=$now
           pd preventScreenSaver 1
           pd flIntensity "$(cat /tmp/inkhouse.light 2>/dev/null || echo "$LIGHT")"
+          report_battery; last_report=$now
           ;;
         touch) [ "$state" = awake ] && last_touch=$now ;;
         power)
@@ -108,6 +126,7 @@ main_loop() {
       esac
     else
       now=$(date +%s)
+      if [ "$state" = awake ] && [ $((now - ${last_report:-0})) -ge 600 ]; then report_battery; last_report=$now; fi
       if [ "$IDLE_MIN" -gt 0 ] && [ "$state" = awake ] && [ $((now - last_touch)) -ge $((IDLE_MIN * 60)) ]; then
         go_to_sleep
       fi
