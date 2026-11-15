@@ -12,6 +12,18 @@ A touch control panel for Home Assistant on a jailbroken Kindle. Big e-ink butto
 |---|---|---|---|
 | ![Room sheet](docs/screenshots/room.png) | ![Vacuum sheet](docs/screenshots/vacuum.png) | ![Dishwasher sheet](docs/screenshots/dishwasher.png) | ![Alerts sheet](docs/screenshots/alerts.png) |
 
+| Tap feedback | Half-degree steps | Confirm unlock | Confirm all off |
+|---|---|---|---|
+| ![A tapped tile shows a dashed border while sending](docs/screenshots/sending.png) | ![Setpoint in 0.5 degree steps](docs/screenshots/room-half-degree.png) | ![Unlock confirmation](docs/screenshots/unlock-confirm.png) | ![All AC off confirmation](docs/screenshots/all-off-confirm.png) |
+
+| Night mode | House at night | Idle clock | Idle clock at night |
+|---|---|---|---|
+| ![Night mode](docs/screenshots/night-mode.png) | ![House page in night mode](docs/screenshots/house-night.png) | ![Idle clock](docs/screenshots/idle-clock.png) | ![Idle clock in night mode](docs/screenshots/idle-clock-night.png) |
+
+| Camera still |
+|---|
+| ![Camera still sheet](docs/screenshots/camera.png) |
+
 ## Why
 
 An old Kindle makes a great wall or bedside panel: it costs almost nothing, lasts weeks on a charge, and doesn't light up the room. Ready-made Kindle dashboards for Home Assistant are mostly pictures of a dashboard you can't touch. Inkhouse is built for touch from the start, and it is designed around e-ink instead of shrinking a phone UI onto it.
@@ -19,7 +31,7 @@ An old Kindle makes a great wall or bedside panel: it costs almost nothing, last
 ## Features
 
 - **Three pages:** Control (AC tiles, all AC off, door, vacuum, dishwasher, routines), House (door, vacuum, garden, Wi-Fi, cameras, dishwasher, alerts) and Energy (AC energy today, room temperatures and humidity).
-- **Room sheet:** big setpoint with − / + buttons, mode and fan speed.
+- **Room sheet:** big setpoint with − / + buttons in the AC's own step (for example 0.5°), mode and fan speed.
 - **Usual settings:** the vacuum and dishwasher sheets underline the settings you normally use, so one tap starts your usual run. A vacuum app shortcut can be its own button.
 - **Alerts:** AC left on too long, NAS too hot, low lock battery, internet down, vacuum maintenance due, with a reset button where it makes sense.
 - **Camera stills on tap,** resized by Home Assistant to about 15–20 KB.

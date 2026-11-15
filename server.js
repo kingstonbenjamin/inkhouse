@@ -30,7 +30,7 @@ const readSet = new Set([...(config.read || []), ...Object.keys(control)]);
 
 // Only these attributes are sent to the panel, per domain; the rest of HA's state stays on the server
 const ATTRS = {
-  climate: ['temperature', 'current_temperature', 'fan_mode', 'hvac_action', 'min_temp', 'max_temp', 'hvac_modes', 'fan_modes'],
+  climate: ['temperature', 'current_temperature', 'fan_mode', 'hvac_action', 'min_temp', 'max_temp', 'target_temp_step', 'hvac_modes', 'fan_modes'],
   select: ['options'],
   vacuum: ['battery_level'],
   sensor: ['unit_of_measurement'],

@@ -522,8 +522,9 @@ function render() {
 function setTemp(e, delta) {
   var cur = localTemp[e] !== undefined ? localTemp[e] : A(e, 'temperature');
   if (cur === undefined || cur === null) return;
-  var lo = A(e, 'min_temp') || 16, hi = A(e, 'max_temp') || 30;
-  localTemp[e] = Math.max(lo, Math.min(hi, cur + delta));
+  var lo = A(e, 'min_temp') || 16, hi = A(e, 'max_temp') || 30, step = A(e, 'target_temp_step') || 1;
+  // WHY: use the AC's own step (often 0.5°) and round, so 0.1 + 0.2 style float errors never reach HA
+  localTemp[e] = Math.max(lo, Math.min(hi, Math.round((cur + delta * step) / step) * step));
   // WHY: send one call after the taps stop, instead of one per tap
   clearTimeout(tempTimer[e]);
   tempTimer[e] = setTimeout(function () { tempTimer[e] = null; act(e, 'temperature', localTemp[e]); }, 1200);

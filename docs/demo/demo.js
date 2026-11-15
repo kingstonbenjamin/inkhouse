@@ -59,7 +59,7 @@
   for (var i = 0; i < ROOMS.length; i++) {
     var r = ROOMS[i], id = r[0];
     ui.rooms.push({ name: r[1], climate: 'climate.' + id, hours: 'sensor.' + id + '_ac_hours', humidity: r[3] === null ? null : 'sensor.' + id + '_humidity', alertHours: r[5] });
-    put('climate.' + id, r[6] ? 'cool' : 'off', { temperature: r[6] ? 24 : null, current_temperature: r[2], fan_mode: 'auto', min_temp: 16, max_temp: 30, hvac_modes: MODES, fan_modes: FANS }, r[6] ? 3 : 5);
+    put('climate.' + id, r[6] ? 'cool' : 'off', { temperature: r[6] ? 24 : null, current_temperature: r[2], fan_mode: 'auto', min_temp: 16, max_temp: 30, target_temp_step: 0.5, hvac_modes: MODES, fan_modes: FANS }, r[6] ? 3 : 5);
     put('sensor.' + id + '_ac_hours', String(r[4]));
     if (r[3] !== null) put('sensor.' + id + '_humidity', String(r[3]), { unit_of_measurement: '%' });
   }
