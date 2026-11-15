@@ -107,6 +107,8 @@ table.rooms { width:100%; border-collapse:collapse; font-size:13px; }
 .alist { list-style:none; margin:6px 0 0; padding:0; }
 .alist li { display:flex; justify-content:space-between; align-items:center; min-height:34px; border-bottom:1px solid #8d8a83; font-size:13px; }
 .alist .ok { font:14px Palatino, Georgia, serif; }
+.alist .rt { display:flex; align-items:center; }
+.alist .dismiss { font:600 12px Futura, "Century Gothic", sans-serif; letter-spacing:.06em; text-transform:uppercase; border:2px solid #111; border-radius:20px; padding:11px 14px; margin-left:8px; cursor:pointer; white-space:nowrap; }
 .alist .hot { font-weight:600; border:2px solid #111; border-radius:12px; padding:1px 8px; margin-left:8px; white-space:nowrap; }
 .dialog { position:absolute; left:26px; right:26px; top:150px; background:#f3f1ea; border:3px solid #111; border-radius:20px; padding:18px 16px 16px; box-shadow:8px 8px 0 #111; }
 .dialog h3 { margin:0 0 4px; font:600 19px Futura, sans-serif; }
@@ -289,10 +291,21 @@ function alerts() {
   if (UI.lock && UI.lock.battery) { var b = N(UI.lock.battery); out.push({ name: 'Door lock battery', rule: 'below ' + al.lockBattery + '%', hot: b !== null && b < al.lockBattery, now: b + '%' }); }
   if (UI.wifi) out.push({ name: 'Internet', rule: 'mesh WAN down', hot: S(UI.wifi.wan) === 'off', now: 'down' });
   if (UI.vacuum && UI.vacuum.sensorDirty) { var sd = N(UI.vacuum.sensorDirty); out.push({ name: 'Vacuum sensors', rule: 'cleaning due', hot: sd !== null && sd <= al.vacuumSensorHours, now: 'within ' + Math.round(sd) + ' h' }); }
-  out.sort(function (a, b) { return (b.hot ? 1 : 0) - (a.hot ? 1 : 0); });
+  // A dismissed alert stays dismissed until it clears; the next time it fires it counts again
+  var ack = loadAck(), changed = false;
+  for (i = 0; i < out.length; i++) {
+    if (out[i].hot && ack[out[i].name]) out[i].acked = true;
+    else if (!out[i].hot && ack[out[i].name]) { delete ack[out[i].name]; changed = true; }
+  }
+  if (changed) saveAck(ack);
+  out.sort(function (a, b) { return rank(b) - rank(a); });
   return out;
 }
-function hotCount(list) { var n = 0; for (var i = 0; i < list.length; i++) if (list[i].hot) n++; return n; }
+function rank(a) { return a.hot ? (a.acked ? 1 : 2) : 0; }
+function loadAck() { try { return JSON.parse(localStorage.getItem('ink-ack') || '{}'); } catch (e) { return {}; } }
+function saveAck(a) { try { localStorage.setItem('ink-ack', JSON.stringify(a)); } catch (e) {} }
+function hotCount(list) { var n = 0; for (var i = 0; i < list.length; i++) if (list[i].hot && !list[i].acked) n++; return n; }
+function ackedCount(list) { var n = 0; for (var i = 0; i < list.length; i++) if (list[i].acked) n++; return n; }
 function secondsUntil(hhmm) {
   var p = hhmm.split(':'), d = L(), t = new Date(d.getTime());
   t.setHours(+p[0], +p[1], 0, 0);
@@ -383,7 +396,7 @@ function housePage(al) {
   }
   var hot = hotCount(al), first = al[0];
   h += '<div class="card' + (hot ? ' warn' : '') + '" data-a="open" data-id="alerts"><div class="ct">' + ic('bell', 1) + 'Alerts · ' + hot + '</div>' +
-    (hot ? '<div class="cv">' + esc(first.name) + '</div><div class="cs">' + esc(first.now) + '<br>' + (al.length - hot) + ' more all clear</div>' : '<div class="cv">All clear</div><div class="cs">' + al.length + ' rules watched</div>') + '</div>';
+    (hot ? '<div class="cv">' + esc(first.name) + '</div><div class="cs">' + esc(first.now) + '<br>' + (al.length - hot) + ' more all clear</div>' : '<div class="cv">All clear</div><div class="cs">' + al.length + ' rules watched' + (ackedCount(al) ? '<br>' + ackedCount(al) + ' dismissed' : '') + '</div>') + '</div>';
   var p = S(UI.person);
   return '<div class="page' + (view.page === 'house' ? ' on' : '') + '">' + head('House', '<span>' + (p ? esc(UI.personName) + ' is ' + (p === 'home' ? 'home' : 'away') : '') + '</span>') + '<div class="cards">' + h + '</div></div>';
 }
@@ -468,11 +481,13 @@ function sheetHtml(al) {
       '<div class="pill" data-a="open" data-id="' + sh + '">' + ic('refresh', 1) + 'New still</div>';
   } else if (sh === 'alerts') {
     var li = '';
-    for (i = 0; i < al.length; i++) li += '<li><span><b>' + esc(al[i].name) + '</b> · ' + esc(al[i].rule) + '</span>' + (al[i].hot ? '<span class="hot">' + esc(al[i].now) + '</span>' : '<span class="ok">clear</span>') + '</li>';
-    var vacHot = false;
-    for (i = 0; i < al.length; i++) if (al[i].name === 'Vacuum sensors' && al[i].hot) vacHot = true;
-    body = top('Alerts', hotCount(al) + ' active · same rules as your phone alerts') + '<ul class="alist">' + li + '</ul>' +
-      (vacHot && UI.vacuum.resetSensor ? '<div class="vline" style="margin:14px 2px 8px">Wipe the robot\'s sensors with a dry cloth, then reset the reminder:</div><div class="pill" data-a="vreset">Sensors cleaned · reset</div>' : '');
+    for (i = 0; i < al.length; i++) {
+      var a2 = al[i], right = !a2.hot ? '<span class="ok">clear</span>'
+        : a2.acked ? '<span class="ok">' + esc(a2.now) + ' · dismissed</span>'
+        : '<span class="hot">' + esc(a2.now) + '</span><span class="dismiss" data-a="ack" data-v="' + esc(a2.name) + '">Dismiss</span>';
+      li += '<li><span><b>' + esc(a2.name) + '</b> · ' + esc(a2.rule) + '</span><span class="rt">' + right + '</span></li>';
+    }
+    body = top('Alerts', hotCount(al) + ' active' + (ackedCount(al) ? ' · ' + ackedCount(al) + ' dismissed' : '') + ' · dismissed alerts return if they fire again') + '<ul class="alist">' + li + '</ul>';
   }
   return '<div class="scrim" data-a="close"></div><div class="sheet"><div class="grab"></div>' + body + '</div>';
 }
@@ -558,7 +573,7 @@ function tap(a, id, v) {
       for (i = 0; i < UI.vacuum.settings.length; i++) { var st = UI.vacuum.settings[i]; if (!bad(S(st.entity)) && S(st.entity) !== st.usual) act(st.entity, 'select', st.usual); }
       return;
     case 'vacStart': act(UI.vacuum.entity, 'start'); return;
-    case 'vreset': act(UI.vacuum.resetSensor, 'press'); return;
+    case 'ack': var ak = loadAck(); ak[v] = true; saveAck(ak); break;
     case 'vshort': act(UI.vacuum.shortcut.entity, 'press'); return;
     case 'vacDock': act(UI.vacuum.entity, 'dock'); return;
     case 'dprog': dish.prog = v; break;

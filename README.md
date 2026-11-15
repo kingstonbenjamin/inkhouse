@@ -10,7 +10,7 @@ A touch control panel for Home Assistant on a jailbroken Kindle. Big e-ink butto
 
 | Room sheet | Vacuum | Dishwasher | Alerts |
 |---|---|---|---|
-| ![Room sheet](docs/screenshots/room.png) | ![Vacuum sheet](docs/screenshots/vacuum.png) | ![Dishwasher sheet](docs/screenshots/dishwasher.png) | ![Alerts sheet](docs/screenshots/alerts.png) |
+| ![Room sheet](docs/screenshots/room.png) | ![Vacuum sheet](docs/screenshots/vacuum.png) | ![Dishwasher sheet](docs/screenshots/dishwasher.png) | ![Alerts sheet with a Dismiss button](docs/screenshots/alerts.png) |
 
 | Tap feedback | Half-degree steps | Confirm unlock | Confirm all off |
 |---|---|---|---|
@@ -33,7 +33,7 @@ An old Kindle makes a great wall or bedside panel: it costs almost nothing, last
 - **Three pages:** Control (AC tiles, all AC off, door, vacuum, dishwasher, routines), House (door, vacuum, garden, Wi-Fi, cameras, dishwasher, alerts) and Energy (AC energy today, room temperatures and humidity).
 - **Room sheet:** big setpoint with − / + buttons in the AC's own step (for example 0.5°), mode and fan speed.
 - **Usual settings:** the vacuum and dishwasher sheets underline the settings you normally use, so one tap starts your usual run. A vacuum app shortcut can be its own button.
-- **Alerts:** AC left on too long, NAS too hot, low lock battery, internet down, vacuum maintenance due, with a reset button where it makes sense.
+- **Alerts:** AC left on too long, NAS too hot, low lock battery, internet down, vacuum maintenance due. Dismiss one and its badge goes away until it fires again.
 - **Camera stills on tap,** resized by Home Assistant to about 15–20 KB.
 - **Made for e-ink:** black, paper and one gray. No animation (no ghosting). Every tap target is at least about 10 mm. Idle clock after 2 minutes. Night mode.
 - **Fast:** the page is one file, about 14 KB compressed. State updates are about 1.5 KB and arrive within a second of a change (long polling). Taps show "sending" at once, then Home Assistant confirms.
@@ -75,7 +75,11 @@ Open `http://<server-ip>:8190/health`; it should say `"ha":true`. Then set `DRY_
 Any jailbroken Kindle with a browser (see [kindlemodding.org](https://kindlemodding.org/)). Developed on a Kindle Paperwhite 4 (10th gen), firmware 5.18.1.
 
 - **Quick:** open the Kindle's web browser at `http://<server-ip>:8190/`.
-- **Full screen:** copy `kindle/inkhouse.sh` and `kindle/inkhouse_stop.sh` to the Kindle's `documents/` folder, set `PANEL_URL` in `inkhouse.sh`, and open **Inkhouse** from the library. It hides the Kindle UI, opens the panel in the built-in browser with no toolbar, and keeps the screen awake. Press the power button to leave; the Kindle home screen takes up to a minute to come back. **Inkhouse - stop** is a rescue if that ever fails (or hold power about 40 seconds to restart).
+- **Full screen:** copy `kindle/inkhouse.sh` and `kindle/inkhouse_stop.sh` to the Kindle's `documents/` folder, set `PANEL_URL` in `inkhouse.sh`, and open **Inkhouse** from the library. It hides the Kindle UI and opens the panel in the built-in browser with no toolbar. Starting takes about 20 seconds, so the idea is to leave it running and use the cover:
+  - **Close the cover:** front light off, the Kindle sleeps, and the screen keeps the last image at no power cost. **Open it:** the panel wakes in a moment.
+  - **No touch for 10 minutes** (`IDLE_MIN`): it sleeps too. Open the cover or press power to wake it.
+  - **Press power while the panel is awake:** leave Inkhouse; the Kindle home screen takes up to a minute to come back.
+  - Everything is logged to `documents/inkhouse.log`. **Inkhouse - stop** is a rescue if leaving ever fails (or hold power about 15 seconds to restart the Kindle).
 
 ## Configuration
 
