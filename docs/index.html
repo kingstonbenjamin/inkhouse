@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inkhouse</title>
+<meta name="description" content="A touch control panel for Home Assistant on a jailbroken Kindle.">
+<style>
+  :root { --paper:#f3f1ea; --ink:#111; --muted:#5f5b53; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper:#151514; --ink:#ece9e1; --muted:#a8a296; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:17px/1.55 Palatino, "Book Antiqua", Georgia, serif; padding:40px 16px 70px; }
+  main { max-width:980px; margin:0 auto; }
+  h1 { font:600 54px/1 Futura, "Century Gothic", "Trebuchet MS", sans-serif; letter-spacing:-.02em; margin:0 0 10px; }
+  .lead { font-size:21px; max-width:40ch; margin:0 0 22px; }
+  .links { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 36px; }
+  .links a { font:600 14px Futura, "Century Gothic", sans-serif; letter-spacing:.1em; text-transform:uppercase; color:var(--ink); text-decoration:none; border:3px solid var(--ink); border-radius:26px; padding:11px 20px; }
+  .links a.main { background:var(--ink); color:var(--paper); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+  figure { margin:0; }
+  figure img { width:100%; display:block; border:3px solid var(--ink); border-radius:12px; }
+  figcaption { font:600 12px Futura, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-top:6px; }
+  footer { margin-top:40px; color:var(--muted); font-size:15px; }
+  footer a { color:inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Inkhouse</h1>
+  <p class="lead">A touch control panel for Home Assistant on a jailbroken Kindle: big e-ink buttons for the air conditioning, the front door, the vacuum and the dishwasher.</p>
+  <div class="links">
+    <a class="main" href="demo/">Live demo</a>
+    <a href="mockups/design.html">Design mockup</a>
+    <a href="mockups/first-options.html">First options</a>
+    <a href="https://github.com/kingstonbenjamin/inkhouse">Source on GitHub</a>
+  </div>
+  <div class="grid">
+    <figure><img src="screenshots/control.png" alt="Control page with six AC tiles"><figcaption>Control</figcaption></figure>
+    <figure><img src="screenshots/house.png" alt="House page with door, vacuum, garden and cameras"><figcaption>House</figcaption></figure>
+    <figure><img src="screenshots/energy.png" alt="Energy page with AC energy and room temperatures"><figcaption>Energy</figcaption></figure>
+    <figure><img src="screenshots/room.png" alt="Room sheet with a large setpoint"><figcaption>Room sheet</figcaption></figure>
+    <figure><img src="screenshots/vacuum.png" alt="Vacuum sheet with usual settings underlined"><figcaption>Vacuum</figcaption></figure>
+    <figure><img src="screenshots/dishwasher.png" alt="Dishwasher sheet with programs and start times"><figcaption>Dishwasher</figcaption></figure>
+    <figure><img src="screenshots/alerts.png" alt="Alerts sheet"><figcaption>Alerts</figcaption></figure>
+    <figure><img src="screenshots/camera.png" alt="Camera still sheet"><figcaption>Camera still</figcaption></figure>
+  </div>
+  <footer>Sample data only. MIT licensed. Not affiliated with Amazon or Home Assistant.</footer>
+</main>
+</body>
+</html>

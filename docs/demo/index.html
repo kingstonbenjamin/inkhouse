@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Inkhouse</title>
+<style>
+html, body { margin:0; padding:0; overflow:hidden; background:#f3f1ea; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+/* WHY: everything is laid out on a 420 px wide canvas and scaled to the screen, so sizes stay finger-sized on any Kindle */
+#app { position:absolute; left:0; top:0; width:420px; overflow:hidden;
+  background:#f3f1ea; color:#111;
+  font-family:Futura, "Century Gothic", "Trebuchet MS", Helvetica, sans-serif; -webkit-transform-origin:0 0; transform-origin:0 0; -webkit-user-select:none; user-select:none; }
+/* WHY: night mode inverts the whole panel; no CSS variables, which an old Kindle browser may not support */
+#app.night { -webkit-filter:invert(1); filter:invert(1); }
+.num { font-family:Palatino, "Book Antiqua", Georgia, serif; }
+.kbar { height:22px; display:flex; justify-content:space-between; align-items:center; padding:0 12px; font-size:11px; border-bottom:1px solid #111; }
+.page { position:absolute; top:22px; left:0; right:0; bottom:58px; padding:0 14px 8px; display:none; overflow-y:auto; }
+/* WHY: the Kindle browser draws a wide scrollbar on any scrolling box; the layout is sized to fit, so hide it */
+::-webkit-scrollbar { width:0; height:0; display:none; }
+.page.on { display:block; }
+.head { height:46px; display:flex; align-items:center; justify-content:space-between; }
+.head .day { font-size:12px; letter-spacing:.16em; text-transform:uppercase; }
+.head .right { display:flex; align-items:center; font-size:14px; }
+.head .right > * { margin-left:6px; }
+.ib { width:44px; height:44px; display:flex; align-items:center; justify-content:center; border:2px solid #111; border-radius:50%; cursor:pointer; }
+.label { display:flex; justify-content:space-between; align-items:baseline; font-size:11px; letter-spacing:.18em; text-transform:uppercase; padding:4px 2px 6px; border-bottom:2px solid #111; margin-bottom:8px; }
+.label b { letter-spacing:0; text-transform:none; font-size:12px; font-weight:400; }
+.acgrid, .house, .cards, .tgs, .two, .chips { display:flex; flex-wrap:wrap; }
+.ac { width:48.9%; margin:0 2.2% 8px 0; height:64px; display:flex; align-items:center; padding:0 8px; border:2px solid #111; border-radius:16px; cursor:pointer; }
+.ac:nth-child(2n) { margin-right:0; }
+.ac.on { border-width:3px; padding-left:7px; }
+.disc { flex:none; width:46px; height:46px; margin-right:10px; border-radius:50%; border:2px solid #111; display:flex; align-items:center; justify-content:center; }
+.ac.on .disc { background:#111; color:#f3f1ea; }
+.ac .txt { min-width:0; overflow:hidden; }
+.ac .nm { font-weight:600; font-size:15px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ac .st { font-size:15px; line-height:1.2; white-space:nowrap; }
+.pending { border-style:dashed !important; }
+.err { outline:3px solid #111; outline-offset:-7px; }
+.alloff { height:50px; display:flex; align-items:center; justify-content:center; border:3px solid #111; border-radius:25px; font-size:14px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; }
+.alloff svg { margin-right:10px; }
+.hb { width:23.3%; margin-right:2.26%; height:74px; border:2px solid #111; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; text-align:center; overflow:hidden; }
+.hb:last-child { margin-right:0; }
+.hb .t { font-size:12px; font-weight:600; margin-top:2px; } .hb .v { font-size:11px; white-space:nowrap; }
+.nav { position:absolute; left:0; right:0; bottom:0; height:58px; display:flex; border-top:2px solid #111; background:#f3f1ea; }
+.nav div { flex:1; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; }
+.nav div svg { margin-right:7px; }
+.nav div + div { border-left:1px solid #111; }
+.nav .on { background:#111; color:#f3f1ea; }
+.hero { display:flex; align-items:flex-end; justify-content:space-between; padding:2px 2px 8px; border-bottom:2px solid #111; margin-bottom:10px; }
+.hero .big { font-size:54px; line-height:.9; }
+.hero .big small { font:600 13px Futura, sans-serif; letter-spacing:.1em; margin-left:4px; }
+.hero .side { text-align:right; font-size:13px; line-height:1.45; }
+table.rooms { width:100%; border-collapse:collapse; font-size:13px; }
+.rooms th { font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:400; text-align:right; padding:2px 4px; border-bottom:2px solid #111; }
+.rooms th:first-child, .rooms td:first-child { text-align:left; }
+.rooms td { padding:0 4px; height:28px; border-bottom:1px solid #8d8a83; text-align:right; }
+.rooms td.n { font-family:Palatino, Georgia, serif; font-size:14px; }
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; border:2px solid #111; vertical-align:-1px; }
+.dot.on { background:#111; }
+.chips { margin-top:12px; }
+.chip { width:31.8%; margin-right:2.3%; border:2px solid #111; border-radius:14px; padding:5px 4px; text-align:center; font-size:11px; line-height:1.25; white-space:nowrap; }
+.chip:last-child { margin-right:0; }
+.chip b { display:block; font:600 16px Palatino, Georgia, serif; }
+.note { font-size:11px; margin:10px 2px 0; }
+.card { width:48.9%; margin:0 2.2% 8px 0; min-height:92px; border:2px solid #111; border-radius:16px; padding:7px 10px; cursor:pointer; overflow:hidden; }
+.card:nth-child(2n) { margin-right:0; }
+.card.wide { width:100%; margin-right:0; }
+.card.warn { border-width:3px; }
+.ct { display:flex; align-items:center; font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+.ct svg { margin-right:6px; }
+.cv { font:600 19px/1.15 Palatino, Georgia, serif; margin:3px 0 1px; }
+.cs { font-size:11.5px; line-height:1.35; }
+.cams { display:flex; margin-top:5px; }
+.cam { flex:1; margin-right:6px; height:52px; border:2px solid #111; border-radius:8px; display:flex; align-items:flex-end; padding:3px 5px; font-size:10px; font-weight:600; background:-webkit-radial-gradient(#8d8a83 1px, transparent 1.3px); background:radial-gradient(#8d8a83 1px, transparent 1.3px); background-size:4px 4px; }
+.cam:last-child { margin-right:0; }
+.cam span { background:#f3f1ea; padding:0 3px; border-radius:3px; }
+.scrim { position:absolute; top:22px; left:0; right:0; bottom:0; background:repeating-linear-gradient(0deg, rgba(128,128,128,.14) 0, rgba(128,128,128,.14) 1px, transparent 1px, transparent 3px); }
+.sheet { position:absolute; left:0; right:0; bottom:0; max-height:532px; background:#f3f1ea; border-top:3px solid #111; border-radius:22px 22px 0 0; padding:10px 16px 16px; overflow-y:auto; }
+.grab { width:56px; height:5px; border-radius:3px; background:#111; margin:0 auto 8px; }
+.sheet .top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.sheet .top h3 { margin:0; font:600 20px Futura, sans-serif; }
+.sheet .top p { margin:0; font-size:13px; }
+.setp { display:flex; align-items:center; justify-content:space-between; margin:14px 0 12px; }
+.round { width:72px; height:72px; border-radius:50%; border:3px solid #111; display:flex; align-items:center; justify-content:center; font-size:38px; line-height:1; cursor:pointer; }
+.setp .val { font-size:92px; line-height:1; } .setp .val sup { font-size:40px; }
+.seg { display:flex; border:2px solid #111; border-radius:24px; overflow:hidden; margin-bottom:10px; }
+.seg div { flex:1; height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; cursor:pointer; text-align:center; }
+.seg.sm div { height:40px; font-size:12px; }
+.seg div + div { border-left:1px solid #111; }
+.seg .on { background:#111; color:#f3f1ea; }
+.seg .usual { text-decoration:underline; }
+.sl { font-size:10px; letter-spacing:.18em; text-transform:uppercase; margin:0 0 4px 4px; }
+.two.three .pill { width:32%; margin-right:2%; letter-spacing:.04em; font-size:13px; }
+.two.three .pill:last-child { margin-right:0; }
+.pill { height:54px; border-radius:27px; background:#111; color:#f3f1ea; display:flex; align-items:center; justify-content:center; font-weight:600; letter-spacing:.12em; text-transform:uppercase; font-size:14px; cursor:pointer; border:3px solid #111; }
+.pill svg { margin-right:10px; }
+.pill.out { background:#f3f1ea; color:#111; }
+.pill.dis { border-style:dashed; background:#f3f1ea; color:#8d8a83; }
+.two { margin-top:8px; } .two .pill { width:48.5%; margin-right:3%; } .two .pill:last-child { margin-right:0; }
+.tg { width:31.8%; margin:0 2.3% 6px 0; height:44px; border:2px solid #111; border-radius:22px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; cursor:pointer; }
+.tg:nth-child(3n) { margin-right:0; }
+.tg.on { background:#111; color:#f3f1ea; }
+.tg.dis { border-style:dashed; color:#8d8a83; }
+.reset { font-size:12px; text-decoration:underline; cursor:pointer; padding:12px 4px; }
+.vline { font-size:12.5px; margin:0 0 10px; }
+.alist { list-style:none; margin:6px 0 0; padding:0; }
+.alist li { display:flex; justify-content:space-between; align-items:center; min-height:34px; border-bottom:1px solid #8d8a83; font-size:13px; }
+.alist .ok { font:14px Palatino, Georgia, serif; }
+.alist .hot { font-weight:600; border:2px solid #111; border-radius:12px; padding:1px 8px; margin-left:8px; white-space:nowrap; }
+.dialog { position:absolute; left:26px; right:26px; top:150px; background:#f3f1ea; border:3px solid #111; border-radius:20px; padding:18px 16px 16px; box-shadow:8px 8px 0 #111; }
+.dialog h3 { margin:0 0 4px; font:600 19px Futura, sans-serif; }
+.dialog p { margin:0 0 16px; font:15px/1.4 Palatino, Georgia, serif; }
+.idle { position:absolute; top:22px; left:0; right:0; bottom:0; background:#f3f1ea; display:flex; flex-direction:column; justify-content:center; padding:0 30px; cursor:pointer; }
+.idle .clock { font-size:132px; line-height:.9; letter-spacing:-.03em; }
+.idle .date { font-size:14px; letter-spacing:.2em; text-transform:uppercase; margin:14px 0 26px; }
+.idle .line { border-top:2px solid #111; padding:10px 0; font:17px/1.45 Palatino, Georgia, serif; display:flex; justify-content:space-between; }
+.idle .wake { position:absolute; bottom:22px; left:0; right:0; text-align:center; font-size:11px; letter-spacing:.2em; text-transform:uppercase; }
+.offline { position:absolute; left:0; right:0; top:22px; height:30px; background:#111; color:#f3f1ea; font-size:12px; display:flex; align-items:center; justify-content:center; letter-spacing:.06em; z-index:5; }
+.toast { position:absolute; left:40px; right:40px; bottom:72px; background:#111; color:#f3f1ea; border-radius:14px; padding:10px 12px; font-size:13px; text-align:center; z-index:6; }
+svg.i { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+svg.s { width:17px; height:17px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="snow" viewBox="0 0 24 24"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M9 3.5l3 2 3-2M9 20.5l3-2 3 2"/></symbol>
+<symbol id="power" viewBox="0 0 24 24"><path d="M12 3v8M6.3 6.8a8 8 0 1 0 11.4 0"/></symbol>
+<symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+<symbol id="vac" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="2.5"/><path d="M7 16h10"/></symbol>
+<symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+<symbol id="sprout" viewBox="0 0 24 24"><path d="M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 12c0-3 2.5-5 6.5-5 0 3.5-2.5 5-6.5 5"/></symbol>
+<symbol id="wifi" viewBox="0 0 24 24"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r=".8"/></symbol>
+<symbol id="cam" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></symbol>
+<symbol id="dish" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 8h14"/><circle cx="12" cy="14" r="3"/></symbol>
+<symbol id="bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></symbol>
+<symbol id="refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></symbol>
+<symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+<symbol id="chart" viewBox="0 0 24 24"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
+<div id="app"></div>
+<script src="demo.js"></script>
+<script>
+// WHY: ES5 only (var, function, XMLHttpRequest) because the Kindle's browser is an old WebKit
+var LABEL = {
+  off: 'Off', cool: 'Cool', dry: 'Dry', fan_only: 'Fan', auto: 'Auto', heat: 'Heat', heat_cool: 'Auto',
+  low: 'Low', mid: 'Mid', medium: 'Mid', middle: 'Mid', high: 'High', quiet: 'Quiet', power: 'Power',
+  sweeping: 'Sweep', mopping: 'Mop', sweeping_and_mopping: 'Both', mopping_after_sweeping: 'Mop after',
+  standard: 'Standard', strong: 'Strong', turbo: 'Turbo', slightly_dry: 'Dry', moist: 'Moist', wet: 'Wet',
+  quick: 'Quick', intensive: 'Intense', deep: 'Deep',
+  docked: 'Docked', cleaning: 'Cleaning', returning: 'Returning', paused: 'Paused', idle: 'Idle', error: 'Error',
+  dishcare_dishwasher_program_eco_50: 'Eco 50', dishcare_dishwasher_program_auto_2: 'Auto',
+  dishcare_dishwasher_program_quick_45: 'Quick 45', dishcare_dishwasher_program_quick_65: 'Quick 65',
+  dishcare_dishwasher_program_intensiv_70: 'Intensive', dishcare_dishwasher_program_glas_40: 'Glass 40',
+  dishcare_dishwasher_program_night_wash: 'Night', dishcare_dishwasher_program_pre_rinse: 'Pre-rinse',
+  dishcare_dishwasher_program_machine_care: 'Care',
+  inactive: 'Off', ready: 'Ready', delayedstart: 'Waiting to start', run: 'Running', pause: 'Paused',
+  actionrequired: 'Needs you', finished: 'Finished', aborting: 'Stopping', locked: 'Locked', unlocked: 'Unlocked',
+  open: 'Open', closed: 'Closed', jammed: 'Jammed', unlocking: 'Unlocking', locking: 'Locking'
+};
+var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var DAYS_L = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var MONTHS_L = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+var app = document.getElementById('app');
+var TITLE = 'Inkhouse', UI = null, ST = { e: {} }, V = -1, haOk = true, netOk = true;
+var view = { page: 'control', sheet: null, dialog: null, idle: false, night: false };
+var pend = {}, errs = {}, localTemp = {}, tempTimer = {}, dish = { prog: null, when: 0 }, toast = null, toastTimer = null;
+var lastTap = new Date().getTime(), pollReq = null;
+
+try { view.night = window.localStorage && localStorage.getItem('ink-night') === '1'; } catch (e) {}
+
+// ---------- helpers ----------
+function E(id) { return id && ST.e[id] ? ST.e[id] : null; }
+function S(id) { var x = E(id); return x ? x.s : null; }
+function A(id, k) { var x = E(id); return x && x.a ? x.a[k] : undefined; }
+function N(id) { var v = parseFloat(S(id)); return isNaN(v) ? null : v; }
+function bad(v) { return v === null || v === 'unavailable' || v === 'unknown'; }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function lab(v) { if (bad(v)) return '–'; if (LABEL[v]) return LABEL[v]; v = String(v).replace(/_/g, ' '); return v.charAt(0).toUpperCase() + v.slice(1); }
+function ic(id, small) { return '<svg class="i' + (small ? ' s' : '') + '"><use xlink:href="#' + id + '" href="#' + id + '"/></svg>'; }
+function fmt1(v) { return v === null ? '–' : (Math.round(v * 10) / 10).toFixed(1); }
+function now() { return new Date().getTime(); }
+// WHY: the Kindle's browser runs on UTC, so every displayed time is shifted to HA's time zone (sent by the server)
+var SHIFT = 0;
+function L(ms) { return new Date((ms === undefined ? now() : ms) + SHIFT); }
+// WHY: old WebKit can't parse "2026-11-11T19:09:33+00:00" with Date.parse, so parse ISO by hand
+function parseISO(s) {
+  var m = /^(\d{4})-(\d\d)-(\d\d)[T ](\d\d):(\d\d)(?::(\d\d))?(?:\.\d+)?(Z|([+-])(\d\d):?(\d\d))?$/.exec(String(s || ''));
+  if (!m) return null;
+  var t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  if (m[8]) t -= (m[8] === '+' ? 1 : -1) * (+m[9] * 60 + +m[10]) * 60000;
+  return L(t);
+}
+function hm(d) { var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? ' AM' : ' PM'); }
+function hmShort(d) { var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m; }
+function dayName(d) {
+  var t = L(); t.setHours(0, 0, 0, 0);
+  var x = new Date(d.getTime()); x.setHours(0, 0, 0, 0);
+  var diff = Math.round((x - t) / 86400000);
+  return diff === 0 ? 'Today' : diff === -1 ? 'Yesterday' : diff === 1 ? 'Tomorrow' : DAYS[d.getDay()];
+}
+function ago(d) {
+  var h = (L().getTime() - d.getTime()) / 3600000;
+  if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min ago';
+  if (h < 24) return Math.round(h) + ' h ago';
+  var n = Math.round(h / 24); return n + (n === 1 ? ' day ago' : ' days ago');
+}
+
+// ---------- network ----------
+function xhr(method, url, body, cb) {
+  var r = new XMLHttpRequest(), done = false;
+  var timer = setTimeout(function () { if (!done) { done = true; r.abort(); cb(0, null); } }, 35000);
+  r.open(method, url, true);
+  if (body) { r.setRequestHeader('Content-Type', 'application/json'); r.setRequestHeader('X-Inkhouse', '1'); }
+  r.onreadystatechange = function () {
+    if (r.readyState !== 4 || done) return;
+    done = true; clearTimeout(timer);
+    var d = null; try { d = JSON.parse(r.responseText); } catch (e) {}
+    cb(r.status, d);
+  };
+  r.send(body ? JSON.stringify(body) : null);
+  return r;
+}
+
+function poll(fresh) {
+  var old = pollReq, me;
+  pollReq = null;
+  if (old) { try { old.abort(); } catch (e) {} }
+  me = pollReq = xhr('GET', 'api/state' + (V >= 0 && !fresh ? '?v=' + V : ''), null, function (st, d) {
+    // WHY: an aborted older request still calls back; only the newest one may schedule the next poll
+    if (pollReq !== me) return;
+    pollReq = null;
+    if (st === 200 && d && d.e) {
+      netOk = true; ST = d; V = d.v; haOk = d.ok !== false; SHIFT = ((d.tz || 0) + new Date().getTimezoneOffset()) * 60000;
+      settle(); render(); setTimeout(function () { if (!pollReq) poll(); }, 100);
+    } else {
+      netOk = false; render(); setTimeout(function () { if (!pollReq) poll(); }, 5000);
+    }
+  });
+}
+
+// A tap marks the entity "sending" until HA reports a change, or flags it after 8 s
+function act(e, verb, v, keepPending) {
+  if (!e) return;
+  var token = now();
+  pend[e] = { snap: JSON.stringify(E(e)), t: token }; delete errs[e];
+  xhr('POST', 'api/action', { e: e, 'do': verb, v: v }, function (st, d) {
+    if (!d || !d.ok) { delete pend[e]; errs[e] = 1; say((d && d.error) || 'Could not reach the panel server'); render(); return; }
+    if (d.dry && !keepPending) { delete pend[e]; render(); }
+  });
+  setTimeout(function () {
+    if (pend[e] && pend[e].t === token) { delete pend[e]; errs[e] = 1; say('No change seen from Home Assistant yet'); render(); }
+  }, 8000);
+  render();
+}
+function settle() {
+  for (var e in pend) if (pend.hasOwnProperty(e) && JSON.stringify(E(e)) !== pend[e].snap) { delete pend[e]; delete errs[e]; }
+  for (var c in localTemp) if (localTemp.hasOwnProperty(c) && A(c, 'temperature') === localTemp[c] && !tempTimer[c]) delete localTemp[c];
+}
+function say(msg) { toast = msg; clearTimeout(toastTimer); toastTimer = setTimeout(function () { toast = null; render(); }, 4000); }
+function cls(e) { return (pend[e] ? ' pending' : '') + (errs[e] ? ' err' : ''); }
+
+// ---------- derived values ----------
+function roomOn(r) { var s = S(r.climate); return !bad(s) && s !== 'off'; }
+function onCount() { var n = 0; for (var i = 0; i < UI.rooms.length; i++) if (roomOn(UI.rooms[i])) n++; return n; }
+function vacUsual() {
+  var st = UI.vacuum.settings;
+  for (var i = 0; i < st.length; i++) if (!bad(S(st[i].entity)) && S(st[i].entity) !== st[i].usual) return false;
+  return true;
+}
+function lastClean() { return UI.vacuum && parseISO(S(UI.vacuum.lastClean)); }
+function alerts() {
+  var out = [], i, r, t = now(), al = UI.alerts || {};
+  for (i = 0; i < UI.rooms.length; i++) {
+    r = UI.rooms[i]; if (!r.alertHours) continue;
+    var on = roomOn(r), hrs = on && E(r.climate) ? (t / 1000 - E(r.climate).c) / 3600 : 0;
+    out.push({ name: r.name + ' AC', rule: 'on over ' + r.alertHours + ' h', hot: on && hrs > r.alertHours, now: on ? 'on ' + Math.floor(hrs) + ' h' : '' });
+  }
+  if (UI.nas) {
+    var cpu = N(UI.nas.cpu), drv = N(UI.nas.drive);
+    out.push({ name: 'NAS CPU', rule: 'over ' + al.nasCpu + '°', hot: cpu !== null && cpu > al.nasCpu, now: cpu + '°' });
+    out.push({ name: 'NAS drive', rule: 'over ' + al.nasDrive + '°', hot: drv !== null && drv > al.nasDrive, now: drv + '°' });
+  }
+  if (UI.lock && UI.lock.battery) { var b = N(UI.lock.battery); out.push({ name: 'Door lock battery', rule: 'below ' + al.lockBattery + '%', hot: b !== null && b < al.lockBattery, now: b + '%' }); }
+  if (UI.wifi) out.push({ name: 'Internet', rule: 'mesh WAN down', hot: S(UI.wifi.wan) === 'off', now: 'down' });
+  if (UI.vacuum && UI.vacuum.sensorDirty) { var sd = N(UI.vacuum.sensorDirty); out.push({ name: 'Vacuum sensors', rule: 'cleaning due', hot: sd !== null && sd <= al.vacuumSensorHours, now: 'within ' + Math.round(sd) + ' h' }); }
+  out.sort(function (a, b) { return (b.hot ? 1 : 0) - (a.hot ? 1 : 0); });
+  return out;
+}
+function hotCount(list) { var n = 0; for (var i = 0; i < list.length; i++) if (list[i].hot) n++; return n; }
+function secondsUntil(hhmm) {
+  var p = hhmm.split(':'), d = L(), t = new Date(d.getTime());
+  t.setHours(+p[0], +p[1], 0, 0);
+  if (t.getTime() <= d.getTime()) t = new Date(t.getTime() + 86400000);
+  return Math.round((t.getTime() - d.getTime()) / 1000);
+}
+
+// ---------- pieces ----------
+function head(left, right) {
+  return '<div class="head"><div class="day">' + left + '</div><div class="right">' + right +
+    '<div class="ib" data-a="night">' + ic('moon', 1) + '</div><div class="ib" data-a="refresh">' + ic('refresh', 1) + '</div></div></div>';
+}
+function seg(kind, ent, opts, cur, usual, small) {
+  var h = '<div class="seg' + (small ? ' sm' : '') + '">';
+  for (var j = 0; j < opts.length; j++) {
+    h += '<div class="' + (opts[j] === cur ? 'on ' : '') + (opts[j] === usual ? 'usual' : '') + '" data-a="' + kind + '" data-id="' + esc(ent) + '" data-v="' + esc(opts[j]) + '">' + esc(lab(opts[j])) + '</div>';
+  }
+  return h + '</div>';
+}
+function outside() { var t = N(UI.outside.temp); return t === null ? '' : fmt1(t) + '° outside'; }
+
+function controlPage(al) {
+  var tiles = '', i, r, d = L();
+  for (i = 0; i < UI.rooms.length; i++) {
+    r = UI.rooms[i];
+    var on = roomOn(r), set = localTemp[r.climate] !== undefined ? localTemp[r.climate] : A(r.climate, 'temperature'), cur = A(r.climate, 'current_temperature');
+    var sub = bad(S(r.climate)) ? 'Unavailable' : on ? lab(S(r.climate)) + ' · ' + set + '°' : 'Off · ' + (cur === undefined ? '–' : cur) + '°';
+    tiles += '<div class="ac' + (on ? ' on' : '') + cls(r.climate) + '" data-a="open" data-id="room:' + i + '">' +
+      '<div class="disc" data-a="toggle" data-id="' + i + '">' + ic(on ? 'snow' : 'power') + '</div>' +
+      '<div class="txt"><div class="nm">' + esc(r.name) + '</div><div class="st num">' + esc(sub) + '</div></div></div>';
+  }
+  var house = '';
+  // Sections missing from config.json are simply left out
+  if (UI.lock) {
+    var lk = UI.lock.entity, locked = S(lk) === 'locked', bat = N(UI.lock.battery);
+    house += '<div class="hb' + cls(lk) + '" data-a="door">' + ic(locked ? 'lock' : 'unlock') + '<div class="t">Front door</div><div class="v">' + esc(lab(S(lk))) + (bat !== null ? ' · ' + bat + '%' : '') + '</div></div>';
+  }
+  if (UI.vacuum) {
+    var lc = lastClean(), vs = S(UI.vacuum.entity);
+    house += '<div class="hb' + cls(UI.vacuum.entity) + '" data-a="open" data-id="vacuum">' + ic('vac') + '<div class="t">Vacuum</div><div class="v">' + (vs === 'docked' && lc ? ago(lc) : esc(lab(vs))) + '</div></div>';
+  }
+  if (UI.dishwasher) house += '<div class="hb" data-a="open" data-id="dish">' + ic('dish') + '<div class="t">Dishwasher</div><div class="v">' + esc(dishShort()) + '</div></div>';
+  for (i = 0; i < (UI.routines || []).length; i++) {
+    var rt = UI.routines[i];
+    house += '<div class="hb' + cls(rt.entity) + '" data-a="routine" data-id="' + i + '">' + ic(rt.icon || 'moon') + '<div class="t">' + esc(rt.label) + '</div><div class="v">routine</div></div>';
+  }
+  return '<div class="page' + (view.page === 'control' ? ' on' : '') + '">' + head(DAYS_L[d.getDay()].slice(0, 3) + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()], '<span class="num">' + outside() + '</span>') +
+    '<div class="label">Climate <b>' + onCount() + ' of ' + UI.rooms.length + ' on</b></div><div class="acgrid">' + tiles + '</div>' +
+    (UI.allOff ? '<div class="alloff' + cls(UI.allOff) + '" data-a="askAllOff">' + ic('power') + 'All AC off</div>' : '') +
+    (house ? '<div class="label" style="margin-top:10px">House</div><div class="house">' + house + '</div>' : '') + '</div>';
+}
+
+function dishShort() {
+  var D = UI.dishwasher, s = S(D.state);
+  if (s === 'run') { var f = parseISO(S(D.finish)); return f ? 'ends ' + hmShort(f) : 'Running'; }
+  if (s === 'delayedstart') return 'Waiting';
+  return lab(s) + (s === 'ready' ? ' · ' + lab(S(D.selected)) : '');
+}
+
+function housePage(al) {
+  var h = '', lk = UI.lock ? UI.lock.entity : null, locked = S(lk) === 'locked', V2 = UI.vacuum || {}, vs = S(V2.entity), lc = lastClean(), i;
+  if (UI.lock) h += '<div class="card' + cls(lk) + '" data-a="door"><div class="ct">' + ic(locked ? 'lock' : 'unlock', 1) + 'Front door</div><div class="cv">' + esc(lab(S(lk))) + '</div><div class="cs">' + (N(UI.lock.battery) !== null ? 'Battery ' + N(UI.lock.battery) + '%' : '') + '</div></div>';
+  if (UI.vacuum) h += '<div class="card" data-a="open" data-id="vacuum"><div class="ct">' + ic('vac', 1) + 'Vacuum</div><div class="cv">' + esc(lab(vs)) + '</div><div class="cs">' + (lc ? 'Last clean ' + ago(lc) + '<br>' : '') + (N(V2.battery) !== null ? 'Battery ' + N(V2.battery) + '%' : '') + '</div></div>';
+  if (UI.garden) {
+    var G = UI.garden, best = null, watering = null;
+    for (i = 0; i < G.zones.length; i++) {
+      var z = E(G.zones[i].entity); if (!z) continue;
+      if (z.s === 'on') watering = G.zones[i].name;
+      else if (!best || z.c > best.c) best = { c: z.c, name: G.zones[i].name };
+    }
+    var nx = parseISO(S(G.next)), lastD = best ? L(best.c * 1000) : null;
+    h += '<div class="card"><div class="ct">' + ic('sprout', 1) + 'Garden</div><div class="cv">' + (watering ? 'Watering now' : lastD ? 'Watered ' + dayName(lastD).toLowerCase().replace(/^(mon|tue|wed|thu|fri|sat|sun)$/, function (x) { return x.charAt(0).toUpperCase() + x.slice(1); }) : '–') + '</div>' +
+      '<div class="cs">' + (watering ? esc(watering) : best ? esc(best.name) + ', ' + hm(lastD) : '') + (nx ? '<br>Next: ' + dayName(nx) + ' ' + hm(nx) : '') + '</div></div>';
+  }
+  if (UI.wifi) {
+    var wan = S(UI.wifi.wan), dev = N(UI.wifi.devices);
+    h += '<div class="card"><div class="ct">' + ic('wifi', 1) + 'Wi-Fi</div><div class="cv">' + (wan === 'on' ? 'Online' : wan === 'off' ? 'No internet' : '–') + '</div><div class="cs">' + (dev !== null ? dev + ' devices online' : '') + '</div></div>';
+  }
+  if (UI.cameras && UI.cameras.length) {
+    var cams = '';
+    for (i = 0; i < UI.cameras.length; i++) cams += '<div class="cam" data-a="open" data-id="cam:' + i + '"><span>' + esc(UI.cameras[i].name) + '</span></div>';
+    h += '<div class="card wide"><div class="ct">' + ic('cam', 1) + 'Cameras · tap for a still</div><div class="cams">' + cams + '</div></div>';
+  }
+  if (UI.dishwasher) {
+    var D = UI.dishwasher, ds = S(D.state), fin = parseISO(S(D.finish));
+    h += '<div class="card" data-a="open" data-id="dish"><div class="ct">' + ic('dish', 1) + 'Dishwasher</div><div class="cv">' + esc(lab(ds)) + '</div><div class="cs">' +
+      (ds === 'run' ? esc(lab(S(D.active))) + (fin ? ' · ends ' + hm(fin) : '') : 'Door ' + esc(lab(S(D.door)).toLowerCase())) + '</div></div>';
+  }
+  var hot = hotCount(al), first = al[0];
+  h += '<div class="card' + (hot ? ' warn' : '') + '" data-a="open" data-id="alerts"><div class="ct">' + ic('bell', 1) + 'Alerts · ' + hot + '</div>' +
+    (hot ? '<div class="cv">' + esc(first.name) + '</div><div class="cs">' + esc(first.now) + '<br>' + (al.length - hot) + ' more all clear</div>' : '<div class="cv">All clear</div><div class="cs">' + al.length + ' rules watched</div>') + '</div>';
+  var p = S(UI.person);
+  return '<div class="page' + (view.page === 'house' ? ' on' : '') + '">' + head('House', '<span>' + (p ? esc(UI.personName) + ' is ' + (p === 'home' ? 'home' : 'away') : '') + '</span>') + '<div class="cards">' + h + '</div></div>';
+}
+
+function energyPage() {
+  var rows = '', i, r, at = ST.at ? L(ST.at * 1000) : null;
+  for (i = 0; i < UI.rooms.length; i++) {
+    r = UI.rooms[i];
+    var cur = A(r.climate, 'current_temperature'), hum = r.humidity ? N(r.humidity) : null, hrs = r.hours ? N(r.hours) : null;
+    rows += '<tr><td>' + esc(r.name) + '</td><td><span class="dot' + (roomOn(r) ? ' on' : '') + '"></span></td><td class="n">' + (cur === undefined || cur === null ? '–' : fmt1(cur) + '°') + '</td><td class="n">' + (hum === null ? '–' : hum + '%') + '</td><td class="n">' + fmt1(hrs) + '</td></tr>';
+  }
+  var kwh = N(UI.energy.kwh), uh = N(UI.energy.hours), ot = N(UI.outside.temp), oh = N(UI.outside.humidity);
+  var chips = '';
+  if (UI.nas) chips = '<div class="chips"><div class="chip"><b>' + (N(UI.nas.cpu) === null ? '–' : N(UI.nas.cpu) + '°') + '</b>NAS CPU</div><div class="chip"><b>' + (N(UI.nas.drive) === null ? '–' : N(UI.nas.drive) + '°') + '</b>NAS drive</div><div class="chip"><b>' + onCount() + ' on</b>AC now</div></div>';
+  return '<div class="page' + (view.page === 'energy' ? ' on' : '') + '">' + head('Today so far', '<span>' + (at ? 'Updated ' + hmShort(at) : '') + '</span>') +
+    '<div class="hero"><div class="big num">' + fmt1(kwh) + '<small>KWH</small></div><div class="side">estimated AC energy<br><span class="num">' + fmt1(uh) + '</span> unit-hours<br>outside <span class="num">' + (ot === null ? '–' : fmt1(ot) + '°') + (oh === null ? '' : ' · ' + oh + '%') + '</span></div></div>' +
+    '<table class="rooms"><tr><th>Room</th><th>AC</th><th>Temp</th><th>Hum.</th><th>Hours</th></tr>' + rows + '</table>' + chips +
+    (UI.energy.note ? '<p class="note">' + esc(UI.energy.note) + '</p>' : '') + '</div>';
+}
+
+function sheetHtml(al) {
+  var sh = view.sheet, i;
+  if (!sh) return '';
+  var top = function (title, sub) { return '<div class="top"><div><h3>' + title + '</h3><p class="num">' + sub + '</p></div><div class="ib" data-a="close">' + ic('close') + '</div></div>'; };
+  var body = '';
+  if (sh.indexOf('room:') === 0) {
+    var r = UI.rooms[+sh.slice(5)], e = r.climate, on = roomOn(r);
+    var set = localTemp[e] !== undefined ? localTemp[e] : A(e, 'temperature'), cur = A(e, 'current_temperature');
+    var modes = [], fm = A(e, 'fan_modes') || [], hv = A(e, 'hvac_modes') || [];
+    for (i = 0; i < hv.length; i++) if (hv[i] !== 'off') modes.push(hv[i]);
+    body = top(esc(r.name), 'Room ' + (cur === undefined ? '–' : cur) + '°' + (r.humidity && N(r.humidity) !== null ? ' · ' + N(r.humidity) + '% humidity' : '') + (r.hours ? ' · ' + fmt1(N(r.hours)) + ' h today' : '')) +
+      (set === undefined || set === null ? '<div class="vline" style="margin:18px 4px">The setpoint shows once the AC is on.</div>' : '<div class="setp"><div class="round" data-a="step" data-v="-1">−</div><div class="val num">' + set + '<sup>°</sup></div><div class="round" data-a="step" data-v="1">+</div></div>') +
+      (modes.length ? '<div class="sl">Mode</div>' + seg('mode', e, modes.slice(0, 5), S(e)) : '') +
+      (fm.length ? '<div class="sl">Fan</div>' + seg('fan', e, fm.slice(0, 5), A(e, 'fan_mode')) : '') +
+      '<div class="pill' + (on ? '' : ' out') + cls(e) + '" data-a="toggle" data-id="' + sh.slice(5) + '" style="margin-top:6px">' + ic('power') + (on ? 'Turn off' : 'Turn on') + '</div>';
+  } else if (sh === 'vacuum') {
+    var V2 = UI.vacuum, vs = S(V2.entity), lc = lastClean(), rows = '';
+    for (i = 0; i < V2.settings.length; i++) {
+      var st = V2.settings[i], opts = A(st.entity, 'options') || [];
+      if (bad(S(st.entity)) || !opts.length) continue;
+      rows += '<div class="sl">' + esc(st.label) + '</div>' + seg('vset', st.entity, opts, S(st.entity), st.usual, true);
+    }
+    var usual = vacUsual(), busy = vs === 'cleaning' || vs === 'returning';
+    body = top('Vacuum', esc(lab(vs)) + (N(V2.battery) !== null ? ' · battery ' + N(V2.battery) + '%' : '') + (lc ? ' · last clean ' + ago(lc) : '')) +
+      '<div class="vline">Underlined = usual. Changes apply to the robot right away.</div>' + rows +
+      // WHY: a shortcut from the vacuum's own app is the usual clean, so it gets the filled button; Start uses the settings above
+      '<div class="two three">' +
+      (V2.shortcut ? '<div class="pill' + cls(V2.shortcut.entity) + '" data-a="vshort">' + esc(V2.shortcut.name) + '</div>' : '') +
+      '<div class="pill' + (V2.shortcut ? ' out' : '') + cls(V2.entity) + '" data-a="vacStart">' + (busy ? 'Cleaning' : V2.shortcut ? 'Start' : usual ? 'Start usual' : 'Start custom') + '</div>' +
+      '<div class="pill out" data-a="vacDock">Dock</div></div>' +
+      (usual ? '' : '<div class="reset" data-a="vusual">Back to usual settings</div>');
+  } else if (sh === 'dish') {
+    var D = UI.dishwasher, ds = S(D.state), progs = A(D.selected, 'options') || [], cur2 = dish.prog || (bad(S(D.selected)) ? D.usual : S(D.selected));
+    var pr = '', a1 = [], a2 = [];
+    for (i = 0; i < progs.length; i++) if (progs[i].indexOf('machine_care') < 0) (a1.length < 4 ? a1 : a2).push(progs[i]);
+    pr = seg('dprog', '', a1, cur2, D.usual, true) + (a2.length ? seg('dprog', '', a2, cur2, D.usual, true) : '');
+    var tg = '';
+    for (i = 0; i < D.options.length; i++) {
+      var o = D.options[i], os = S(o.entity);
+      tg += '<div class="tg' + (os === 'on' ? ' on' : '') + (bad(os) ? ' dis' : '') + cls(o.entity) + '" data-a="dopt" data-id="' + i + '">' + esc(o.label) + '</div>';
+    }
+    var wh = [];
+    for (i = 0; i < D.startTimes.length; i++) wh.push(String(i));
+    var whs = '<div class="seg sm">';
+    for (i = 0; i < D.startTimes.length; i++) whs += '<div class="' + (dish.when === i ? 'on' : '') + '" data-a="dwhen" data-v="' + i + '">' + esc(D.startTimes[i][0]) + '</div>';
+    whs += '</div>';
+    var remote = S(D.remoteStart) === 'on', running = ds === 'run' || ds === 'delayedstart', fin = parseISO(S(D.finish)), prog = N(D.progress);
+    var sub = running ? esc(lab(ds)) + ' · ' + esc(lab(S(D.active))) + (fin ? ' · ends ' + hm(fin) : '') + (prog !== null ? ' · ' + prog + '%' : '') : esc(lab(ds)) + ' · remote start ' + (remote ? 'on' : 'off');
+    var startLbl = D.startTimes[dish.when][1] ? 'Start ' + D.startTimes[dish.when][0] : 'Start now';
+    body = top('Dishwasher', sub) +
+      '<div class="sl">Program · usual ' + esc(lab(D.usual)) + '</div>' + pr +
+      '<div class="sl">Options · usually all off</div><div class="tgs">' + tg + '</div>' +
+      '<div class="sl">Start</div>' + whs +
+      (remote || running ? '' : '<div class="vline">Press remote start on the dishwasher first.</div>') +
+      '<div class="two"><div class="pill' + (remote && !running ? '' : ' dis') + cls(D.active) + '" data-a="dstart">' + ic('dish') + esc(startLbl) + '</div><div class="pill out' + cls(D.stop) + '" data-a="dstop">Stop</div></div>';
+  } else if (sh.indexOf('cam:') === 0) {
+    var cm = UI.cameras[+sh.slice(4)];
+    if (!view.camT) view.camT = now();
+    // WHY: the time in the URL forces a fresh still each time the sheet opens or Refresh is tapped
+    body = top(esc(cm.name), 'Asked at ' + hm(L(view.camT)) + ' · outdoor cameras can take up to 20 s') +
+      '<img class="still" src="api/cam?e=' + encodeURIComponent(cm.entity) + '&t=' + view.camT + '" style="width:100%;border:2px solid #111;border-radius:10px;margin:10px 0;display:block" onerror="this.outerHTML=\'<div class=vline style=margin:30px\u00a04px>This camera did not answer. Try again in a minute.</div>\'">' +
+      '<div class="pill" data-a="open" data-id="' + sh + '">' + ic('refresh', 1) + 'New still</div>';
+  } else if (sh === 'alerts') {
+    var li = '';
+    for (i = 0; i < al.length; i++) li += '<li><span><b>' + esc(al[i].name) + '</b> · ' + esc(al[i].rule) + '</span>' + (al[i].hot ? '<span class="hot">' + esc(al[i].now) + '</span>' : '<span class="ok">clear</span>') + '</li>';
+    var vacHot = false;
+    for (i = 0; i < al.length; i++) if (al[i].name === 'Vacuum sensors' && al[i].hot) vacHot = true;
+    body = top('Alerts', hotCount(al) + ' active · same rules as your phone alerts') + '<ul class="alist">' + li + '</ul>' +
+      (vacHot && UI.vacuum.resetSensor ? '<div class="vline" style="margin:14px 2px 8px">Wipe the robot\'s sensors with a dry cloth, then reset the reminder:</div><div class="pill" data-a="vreset">Sensors cleaned · reset</div>' : '');
+  }
+  return '<div class="scrim" data-a="close"></div><div class="sheet"><div class="grab"></div>' + body + '</div>';
+}
+
+function dialogHtml() {
+  var d = view.dialog;
+  if (!d) return '';
+  var h = d === 'alloff'
+    ? '<h3>Turn off all ACs?</h3><p>All units will switch off. Schedules set in your AC app are not changed.</p><div class="two"><div class="pill out" data-a="close">Cancel</div><div class="pill" data-a="allOff">Turn off</div></div>'
+    : '<h3>Unlock the front door?</h3><p>The lock will open now.</p><div class="two"><div class="pill out" data-a="close">Cancel</div><div class="pill" data-a="unlock">Unlock</div></div>';
+  return '<div class="scrim" data-a="close"></div><div class="dialog">' + h + '</div>';
+}
+
+function idleHtml() {
+  if (!view.idle) return '';
+  var d = L(), n = onCount(), t = N(UI.outside.temp), hu = N(UI.outside.humidity);
+  return '<div class="idle" data-a="wake"><div class="clock num">' + hmShort(d) + '</div><div class="date">' + DAYS_L[d.getDay()] + ' · ' + d.getDate() + ' ' + MONTHS_L[d.getMonth()] + '</div>' +
+    '<div class="line"><span>Outside</span><span>' + (t === null ? '–' : fmt1(t) + '°') + (hu === null ? '' : ' · ' + hu + '%') + '</span></div>' +
+    '<div class="line"><span>Air conditioning</span><span>' + (n ? n + ' on' : 'all off') + '</span></div>' +
+    (UI.lock ? '<div class="line"><span>Front door</span><span>' + esc(lab(S(UI.lock.entity)).toLowerCase()) + '</span></div>' : '') +
+    '<div class="wake">Tap anywhere</div></div>';
+}
+
+function render() {
+  if (!UI) return;
+  var al = alerts(), d = L(), scroll = {};
+  var pages = app.querySelectorAll('.page');
+  for (var i = 0; i < pages.length; i++) scroll[i] = pages[i].scrollTop;
+  app.className = view.night ? 'night' : '';
+  function tab(id, icon, label) { return '<div class="' + (view.page === id ? 'on' : '') + '" data-a="page" data-v="' + id + '">' + ic(icon, 1) + label + '</div>'; }
+  var hot = hotCount(al);
+  var oldStill = app.querySelector('img.still');
+  app.innerHTML =
+    '<div class="kbar"><span>' + (ST.dry ? 'TEST MODE · taps are not sent' : esc(TITLE)) + '</span><span>' + hm(d) + '</span></div>' +
+    (!netOk ? '<div class="offline">Panel server unreachable · retrying</div>' : !haOk ? '<div class="offline">Home Assistant unreachable · last known values</div>' : '') +
+    controlPage(al) + housePage(al) + energyPage() +
+    '<div class="nav">' + tab('control', 'grid', 'Control') + tab('house', 'home', 'House' + (hot ? ' · ' + hot : '')) + tab('energy', 'chart', 'Energy') + '</div>' +
+    sheetHtml(al) + dialogHtml() + idleHtml() + (toast ? '<div class="toast">' + esc(toast) + '</div>' : '');
+  pages = app.querySelectorAll('.page');
+  for (var j = 0; j < pages.length; j++) if (scroll[j]) pages[j].scrollTop = scroll[j];
+  // Keep the already-loaded camera still instead of the fresh copy the redraw just made
+  var newStill = app.querySelector('img.still');
+  if (oldStill && newStill && oldStill.getAttribute('src') === newStill.getAttribute('src')) newStill.parentNode.replaceChild(oldStill, newStill);
+}
+
+// ---------- taps ----------
+function setTemp(e, delta) {
+  var cur = localTemp[e] !== undefined ? localTemp[e] : A(e, 'temperature');
+  if (cur === undefined || cur === null) return;
+  var lo = A(e, 'min_temp') || 16, hi = A(e, 'max_temp') || 30;
+  localTemp[e] = Math.max(lo, Math.min(hi, cur + delta));
+  // WHY: send one call after the taps stop, instead of one per tap
+  clearTimeout(tempTimer[e]);
+  tempTimer[e] = setTimeout(function () { tempTimer[e] = null; act(e, 'temperature', localTemp[e]); }, 1200);
+  render();
+}
+
+function tap(a, id, v) {
+  var D = UI.dishwasher, i;
+  switch (a) {
+    case 'wake': view.idle = false; break;
+    case 'page': view.page = v; view.sheet = null; view.dialog = null; break;
+    // WHY: the still's URL is fixed when the sheet opens, so live-data redraws don't reload the picture
+    case 'open': if (id.indexOf('cam:') === 0) view.camT = now(); view.sheet = id; if (id === 'dish') dish.prog = null; break;
+    case 'close': view.sheet = null; view.dialog = null; break;
+    case 'night':
+      view.night = !view.night;
+      try { localStorage.setItem('ink-night', view.night ? '1' : '0'); } catch (e) {}
+      break;
+    case 'refresh': poll(true); break;
+    case 'toggle': var r = UI.rooms[+id]; act(r.climate, 'power', roomOn(r) ? 0 : 1); return;
+    case 'step': setTemp(UI.rooms[+view.sheet.slice(5)].climate, +v); return;
+    case 'mode': act(id, 'hvac_mode', v); return;
+    case 'fan': act(id, 'fan_mode', v); return;
+    case 'askAllOff': view.dialog = 'alloff'; break;
+    case 'allOff': view.dialog = null; act(UI.allOff, 'run'); return;
+    case 'door': if (S(UI.lock.entity) === 'locked') view.dialog = 'unlock'; else { act(UI.lock.entity, 'lock'); return; } break;
+    case 'unlock': view.dialog = null; act(UI.lock.entity, 'unlock'); return;
+    case 'routine': act(UI.routines[+id].entity, 'run'); return;
+    case 'vset': act(id, 'select', v); return;
+    case 'vusual':
+      for (i = 0; i < UI.vacuum.settings.length; i++) { var st = UI.vacuum.settings[i]; if (!bad(S(st.entity)) && S(st.entity) !== st.usual) act(st.entity, 'select', st.usual); }
+      return;
+    case 'vacStart': act(UI.vacuum.entity, 'start'); return;
+    case 'vreset': act(UI.vacuum.resetSensor, 'press'); return;
+    case 'vshort': act(UI.vacuum.shortcut.entity, 'press'); return;
+    case 'vacDock': act(UI.vacuum.entity, 'dock'); return;
+    case 'dprog': dish.prog = v; break;
+    case 'dopt': var o = D.options[+id]; if (bad(S(o.entity))) return; act(o.entity, 'switch', S(o.entity) === 'on' ? 0 : 1); return;
+    case 'dwhen': dish.when = +v; break;
+    case 'dstart':
+      if (S(D.remoteStart) !== 'on') { say('Press remote start on the dishwasher first'); break; }
+      var prog = dish.prog || (bad(S(D.selected)) ? D.usual : S(D.selected)), at = D.startTimes[dish.when][1];
+      if (at) act(D.delay, 'number', secondsUntil(at));
+      // WHY: the delay must be set before the program starts, so the start call waits a moment
+      setTimeout(function () { act(D.active, 'select', prog); }, at ? 1500 : 0);
+      return;
+    case 'dstop': act(D.stop, 'press'); return;
+    default: return;
+  }
+  render();
+}
+
+app.addEventListener('click', function (ev) {
+  lastTap = now();
+  var t = ev.target;
+  while (t && t !== app && !(t.getAttribute && t.getAttribute('data-a'))) t = t.parentNode;
+  if (!t || t === app) { if (view.idle) { view.idle = false; render(); } return; }
+  var a = t.getAttribute('data-a');
+  // WHY: the round icon toggles the AC; without this the tile behind it would also open the sheet
+  if (ev.stopPropagation) ev.stopPropagation();
+  tap(a, t.getAttribute('data-id'), t.getAttribute('data-v'));
+}, false);
+
+// Idle clock after 2 minutes; the clock only redraws once a minute
+setInterval(function () {
+  if (!view.idle && !view.sheet && !view.dialog && now() - lastTap > 120000) view.idle = true;
+  render();
+}, 60000);
+
+function fit() {
+  // WHY: fit the whole 420x560 design inside the browser's visible area, so nothing needs scrolling
+  var s = Math.min(window.innerWidth / 420, window.innerHeight / 560);
+  app.style.height = Math.round(window.innerHeight / s) + 'px';
+  app.style.left = Math.max(0, Math.round((window.innerWidth - 420 * s) / 2)) + 'px';
+  app.style.webkitTransform = app.style.transform = 'scale(' + s + ')';
+}
+window.addEventListener('resize', fit, false);
+fit();
+
+xhr('GET', 'api/config', null, function (st, d) {
+  if (st !== 200 || !d) { app.innerHTML = '<p style="padding:20px;font-size:18px">Could not load the panel config. Retrying…</p>'; setTimeout(function () { location.reload(); }, 10000); return; }
+  TITLE = d.title || TITLE; UI = d.ui;
+  // Per-home names for raw option values, e.g. { "Map 1": "Downstairs" }
+  if (UI.labels) for (var k in UI.labels) LABEL[k] = UI.labels[k];
+  UI.rooms = UI.rooms || []; UI.outside = UI.outside || {}; UI.energy = UI.energy || {};
+  // Deep links for testing, e.g. #page=house&sheet=alerts
+  var h = /page=(\w+)/.exec(location.hash), sh = /sheet=([\w:]+)/.exec(location.hash);
+  if (h) view.page = h[1];
+  if (sh) view.sheet = sh[1];
+  if (/idle/.test(location.hash)) view.idle = true;
+  poll(true);
+});
+</script>
+</body>
+</html>

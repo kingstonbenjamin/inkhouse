@@ -1,0 +1,92 @@
+{
+  "title": "Inkhouse",
+  "read": [
+    "person.alex",
+    "sensor.outdoor_temperature",
+    "sensor.outdoor_humidity",
+    "sensor.living_room_humidity",
+    "sensor.bedroom_humidity",
+    "sensor.living_room_ac_hours_today",
+    "sensor.bedroom_ac_hours_today",
+    "sensor.ac_kwh_today",
+    "sensor.ac_hours_today",
+    "sensor.front_door_lock_battery",
+    "sensor.robot_battery",
+    "sensor.robot_last_clean",
+    "sensor.robot_sensor_time_left",
+    "sensor.dishwasher_operation_state",
+    "sensor.dishwasher_door",
+    "sensor.dishwasher_finish_time",
+    "sensor.dishwasher_progress",
+    "binary_sensor.dishwasher_remote_start",
+    "binary_sensor.lawn_watering",
+    "sensor.lawn_next_cycle",
+    "binary_sensor.internet",
+    "sensor.wifi_devices",
+    "sensor.nas_cpu_temperature",
+    "sensor.nas_drive_temperature",
+    "camera.porch"
+  ],
+  "control": {
+    "climate.living_room": ["power", "temperature", "hvac_mode", "fan_mode"],
+    "climate.bedroom": ["power", "temperature", "hvac_mode", "fan_mode"],
+    "lock.front_door": ["lock", "unlock"],
+    "vacuum.robot": ["start", "dock"],
+    "select.robot_cleaning_mode": ["select"],
+    "select.robot_suction_level": ["select"],
+    "button.robot_reset_sensor": ["press"],
+    "button.robot_shortcut": ["press"],
+    "select.dishwasher_selected_program": ["select"],
+    "select.dishwasher_active_program": ["select"],
+    "number.dishwasher_start_in_relative": ["number"],
+    "switch.dishwasher_half_load": ["switch"],
+    "button.dishwasher_stop_program": ["press"],
+    "script.ac_all_off": ["run"],
+    "script.good_night": ["run"]
+  },
+  "ui": {
+    "personName": "Alex",
+    "person": "person.alex",
+    "outside": { "temp": "sensor.outdoor_temperature", "humidity": "sensor.outdoor_humidity" },
+    "rooms": [
+      { "name": "Living room", "climate": "climate.living_room", "hours": "sensor.living_room_ac_hours_today", "humidity": "sensor.living_room_humidity", "alertHours": null },
+      { "name": "Bedroom", "climate": "climate.bedroom", "hours": "sensor.bedroom_ac_hours_today", "humidity": "sensor.bedroom_humidity", "alertHours": 12 }
+    ],
+    "allOff": "script.ac_all_off",
+    "energy": { "kwh": "sensor.ac_kwh_today", "hours": "sensor.ac_hours_today", "note": "Optional note shown under the Energy page." },
+    "lock": { "entity": "lock.front_door", "battery": "sensor.front_door_lock_battery" },
+    "vacuum": {
+      "entity": "vacuum.robot",
+      "battery": "sensor.robot_battery",
+      "lastClean": "sensor.robot_last_clean",
+      "sensorDirty": "sensor.robot_sensor_time_left",
+      "settings": [
+        { "label": "Mode", "entity": "select.robot_cleaning_mode", "usual": "sweeping_and_mopping" },
+        { "label": "Suction", "entity": "select.robot_suction_level", "usual": "standard" }
+      ],
+      "resetSensor": "button.robot_reset_sensor",
+      "shortcut": { "name": "Daily", "entity": "button.robot_shortcut" }
+    },
+    "dishwasher": {
+      "state": "sensor.dishwasher_operation_state",
+      "door": "sensor.dishwasher_door",
+      "finish": "sensor.dishwasher_finish_time",
+      "progress": "sensor.dishwasher_progress",
+      "remoteStart": "binary_sensor.dishwasher_remote_start",
+      "selected": "select.dishwasher_selected_program",
+      "active": "select.dishwasher_active_program",
+      "delay": "number.dishwasher_start_in_relative",
+      "stop": "button.dishwasher_stop_program",
+      "usual": "dishcare_dishwasher_program_eco_50",
+      "options": [{ "label": "Half load", "entity": "switch.dishwasher_half_load" }],
+      "startTimes": [["Now", null], ["10 PM", "22:00"], ["11 PM", "23:00"]]
+    },
+    "routines": [{ "label": "Good night", "icon": "moon", "entity": "script.good_night" }],
+    "garden": { "zones": [{ "name": "Lawn", "entity": "binary_sensor.lawn_watering" }], "next": "sensor.lawn_next_cycle" },
+    "wifi": { "wan": "binary_sensor.internet", "devices": "sensor.wifi_devices" },
+    "nas": { "cpu": "sensor.nas_cpu_temperature", "drive": "sensor.nas_drive_temperature" },
+    "cameras": [{ "name": "Porch", "entity": "camera.porch" }],
+    "labels": { "Map 1": "Downstairs", "Map 2": "Upstairs" },
+    "alerts": { "nasCpu": 80, "nasDrive": 50, "lockBattery": 20, "vacuumSensorHours": 5 }
+  }
+}

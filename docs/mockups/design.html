@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inkhouse design mockup</title>
+<style>
+  /* Page around the devices (Mac/phone viewing only) */
+  :root { --desk:#dcd8cf; --desk-ink:#22201c; --muted:#6b665c; --e-paper:#f3f1ea; --e-ink:#111; --e-gray:#8d8a83; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --desk:#191816; --desk-ink:#ebe7de; --muted:#a39d91; }
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--desk); color:var(--desk-ink);
+    font:15px/1.5 Futura, "Century Gothic", "Trebuchet MS", sans-serif; padding:28px 16px 70px;
+    /* WHY: faint paper grain on the desk only; the e-ink screen itself stays flat */
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  header.top { max-width:1240px; margin:0 auto 18px; }
+  header.top h1 { font:600 30px/1.1 Palatino, "Book Antiqua", Georgia, serif; margin:0 0 6px; }
+  header.top p { margin:0; max-width:80ch; color:var(--muted); }
+  .toolbar { max-width:1240px; margin:0 auto 20px; display:flex; flex-wrap:wrap; gap:10px; }
+  .toolbar button { font:600 13px Futura, sans-serif; letter-spacing:.05em; padding:9px 14px; border-radius:20px; border:2px solid var(--desk-ink); background:transparent; color:var(--desk-ink); cursor:pointer; }
+  .toolbar button[aria-pressed="true"] { background:var(--desk-ink); color:var(--desk); }
+  .stage { display:flex; flex-wrap:wrap; gap:34px 28px; justify-content:center; max-width:1500px; margin:0 auto; }
+  .slot { display:flex; flex-direction:column; align-items:center; }
+  .slot h2 { font:600 13px Futura, sans-serif; letter-spacing:.14em; text-transform:uppercase; margin:0 0 10px; color:var(--muted); }
+  .scaler { transform-origin:top center; }
+  .device { width:452px; padding:24px 16px 40px; background:#1c1c1b; border-radius:30px; box-shadow:0 14px 34px rgba(0,0,0,.35), inset 0 0 0 2px #2b2b29; }
+
+  /* ---------- The panel itself (this part ships to the Kindle) ---------- */
+  .screen { --p:#f3f1ea; --k:#111; --g:#8d8a83;
+    position:relative; width:420px; height:560px; overflow:hidden; border-radius:3px;
+    background:var(--p); color:var(--k); font-family:Futura, "Century Gothic", sans-serif; -webkit-user-select:none; user-select:none; }
+  /* WHY: night mode just swaps the two ink variables, so every rule below inverts for free */
+  .screen.night { --p:#111; --k:#ece9e1; --g:#77746d; }
+  .num { font-family:Palatino, "Book Antiqua", Georgia, serif; }
+  .kbar { height:22px; display:flex; justify-content:space-between; align-items:center; padding:0 12px; font-size:11px; border-bottom:1px solid var(--k); }
+  .page { position:absolute; top:22px; left:0; right:0; bottom:58px; padding:0 14px; display:none; }
+  .page.on { display:block; }
+  .head { height:46px; display:flex; align-items:center; justify-content:space-between; }
+  .head .day { font-size:12px; letter-spacing:.16em; text-transform:uppercase; }
+  .head .right { display:flex; align-items:center; gap:6px; font-size:14px; }
+  .ib { width:44px; height:44px; display:flex; align-items:center; justify-content:center; border:2px solid var(--k); border-radius:50%; cursor:pointer; }
+  .label { display:flex; justify-content:space-between; align-items:baseline; font-size:11px; letter-spacing:.18em; text-transform:uppercase; padding:4px 2px 6px; border-bottom:2px solid var(--k); margin-bottom:8px; }
+  .label b { letter-spacing:0; text-transform:none; font-size:12px; font-weight:400; }
+
+  .acgrid { display:flex; flex-wrap:wrap; gap:8px; }
+  .ac { width:calc(50% - 4px); height:64px; display:flex; align-items:center; gap:10px; padding:0 10px 0 8px; border:2px solid var(--k); border-radius:16px; cursor:pointer; }
+  .ac.on { border-width:3px; padding-left:7px; }
+  .disc { flex:none; width:46px; height:46px; border-radius:50%; border:2px solid var(--k); display:flex; align-items:center; justify-content:center; }
+  .ac.on .disc { background:var(--k); color:var(--p); }
+  .ac .txt { min-width:0; }
+  .ac .nm { font-weight:600; font-size:15px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ac .st { font-size:15px; line-height:1.2; white-space:nowrap; }
+  .pending { border-style:dashed !important; }
+  .ac.pending .st::after { content:" · sending"; font-family:Futura, sans-serif; font-size:11px; }
+  .alloff { margin-top:8px; height:50px; display:flex; align-items:center; justify-content:center; gap:10px; border:3px solid var(--k); border-radius:25px; font-size:14px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; }
+  .house { display:flex; gap:8px; }
+  .hb { flex:1; height:74px; border:2px solid var(--k); border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; text-align:center; }
+  .hb .t { font-size:12px; font-weight:600; } .hb .v { font-size:11px; }
+
+  .nav { position:absolute; left:0; right:0; bottom:0; height:58px; display:flex; border-top:2px solid var(--k); background:var(--p); }
+  .nav div { flex:1; display:flex; align-items:center; justify-content:center; gap:7px; font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; }
+  .nav div + div { border-left:1px solid var(--k); }
+  .nav .on { background:var(--k); color:var(--p); }
+
+  .hero { display:flex; align-items:flex-end; justify-content:space-between; padding:2px 2px 8px; border-bottom:2px solid var(--k); }
+  .hero .big { font-size:54px; line-height:.9; }
+  .hero .big small { font:600 13px Futura, sans-serif; letter-spacing:.1em; margin-left:4px; }
+  .hero .side { text-align:right; font-size:13px; line-height:1.45; }
+  .bars { display:flex; align-items:flex-end; gap:10px; height:80px; padding:16px 6px; margin-bottom:4px; }
+  .bar { flex:1; position:relative; background:var(--k); }
+  .bar.today { background:repeating-linear-gradient(45deg,var(--k) 0 3px,var(--p) 3px 6px); border:2px solid var(--k); }
+  .bar span { position:absolute; top:-16px; left:0; right:0; text-align:center; font-size:11px; }
+  .bar em { position:absolute; bottom:-16px; left:0; right:0; text-align:center; font-style:normal; font-size:10px; letter-spacing:.06em; }
+  table.rooms { width:100%; border-collapse:collapse; font-size:13px; }
+  .rooms th { font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:400; text-align:right; padding:2px 4px; border-bottom:2px solid var(--k); }
+  .rooms th:first-child, .rooms td:first-child { text-align:left; }
+  .rooms td { padding:0 4px; height:24px; border-bottom:1px solid var(--g); text-align:right; }
+  .rooms td.n { font-family:Palatino, Georgia, serif; font-size:14px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; border:2px solid var(--k); vertical-align:-1px; }
+  .dot.on { background:var(--k); }
+
+  /* House page cards */
+  .cards { display:flex; flex-wrap:wrap; gap:8px; }
+  .card { width:calc(50% - 4px); min-height:92px; border:2px solid var(--k); border-radius:16px; padding:7px 10px; cursor:pointer; }
+  .card.wide { width:100%; }
+  .card .ct { display:flex; align-items:center; gap:6px; font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+  .card .cv { font:600 19px/1.15 Palatino, Georgia, serif; margin:3px 0 1px; }
+  .card .cs { font-size:11.5px; line-height:1.35; }
+  .card.warn { border-width:3px; }
+  .cams { display:flex; gap:6px; margin-top:5px; }
+  .cam { flex:1; height:52px; border:2px solid var(--k); border-radius:8px; display:flex; align-items:flex-end; padding:3px 5px; font-size:10px; font-weight:600;
+    /* WHY: dither-like dot pattern stands in for a gray camera still, which is how e-ink would show a photo */
+    background:radial-gradient(var(--g) 1px, transparent 1.3px) 0 0/4px 4px; }
+  .cam span { background:var(--p); padding:0 3px; border-radius:3px; }
+
+  /* Sheets and dialogs */
+  .scrim { position:absolute; top:22px; left:0; right:0; bottom:0; background:repeating-linear-gradient(0deg, rgba(128,128,128,.14) 0 1px, transparent 1px 3px); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; height:440px; background:var(--p); border-top:3px solid var(--k); border-radius:22px 22px 0 0; padding:10px 16px 16px; }
+  .grab { width:56px; height:5px; border-radius:3px; background:var(--k); margin:0 auto 8px; }
+  .sheet .top { display:flex; align-items:center; justify-content:space-between; }
+  .sheet .top h3 { margin:0; font:600 20px Futura, sans-serif; }
+  .sheet .top p { margin:0; font-size:13px; }
+  .setp { display:flex; align-items:center; justify-content:space-between; margin:14px 0 12px; }
+  .round { width:72px; height:72px; border-radius:50%; border:3px solid var(--k); display:flex; align-items:center; justify-content:center; font-size:38px; line-height:1; cursor:pointer; }
+  .setp .val { font-size:92px; line-height:1; } .setp .val sup { font-size:40px; }
+  .seg { display:flex; border:2px solid var(--k); border-radius:24px; overflow:hidden; margin-bottom:10px; }
+  .seg div { flex:1; height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; cursor:pointer; }
+  .seg div + div { border-left:1px solid var(--k); }
+  .seg .on { background:var(--k); color:var(--p); }
+  .sl { font-size:10px; letter-spacing:.18em; text-transform:uppercase; margin:0 0 4px 4px; }
+  .pill { height:54px; border-radius:27px; background:var(--k); color:var(--p); display:flex; align-items:center; justify-content:center; gap:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; font-size:14px; cursor:pointer; }
+  .pill.out { background:var(--p); color:var(--k); border:3px solid var(--k); }
+  .two { display:flex; gap:10px; margin-top:8px; } .two .pill { flex:1; }
+  .kv { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0 12px; }
+  .kv td { height:30px; border-bottom:1px solid var(--g); padding:0 2px; } .kv td + td { text-align:right; font:15px Palatino, Georgia, serif; }
+  .vline { font-size:13px; margin:2px 0 10px; }
+  .seg.sm div { height:40px; font-size:12px; }
+  .seg .usual { text-decoration:underline; text-underline-offset:3px; }
+  .reset { font-size:12px; text-decoration:underline; cursor:pointer; padding:12px 4px; }
+  .alist { list-style:none; margin:10px 0 0; padding:0; }
+  .alist li { display:flex; justify-content:space-between; align-items:center; min-height:34px; border-bottom:1px solid var(--g); font-size:13px; gap:10px; }
+  .alist li b { font-weight:600; }
+  .alist .ok { font:14px Palatino, Georgia, serif; }
+  .alist .hot { font:600 13px Futura, sans-serif; border:2px solid var(--k); border-radius:12px; padding:1px 8px; }
+  .tgs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .tg { flex:1 1 30%; height:44px; border:2px solid var(--k); border-radius:22px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; cursor:pointer; }
+  .tg.on { background:var(--k); color:var(--p); }
+  .dialog { position:absolute; left:26px; right:26px; top:150px; background:var(--p); border:3px solid var(--k); border-radius:20px; padding:18px 16px 16px; box-shadow:8px 8px 0 var(--k); }
+  .dialog h3 { margin:0 0 4px; font:600 19px Futura, sans-serif; }
+  .dialog p { margin:0 0 16px; font:15px/1.4 Palatino, Georgia, serif; }
+  .dialog .two .pill { height:54px; }
+
+  /* Idle clock: shown after 2 minutes without a tap */
+  .idle { position:absolute; top:22px; left:0; right:0; bottom:0; background:var(--p); display:flex; flex-direction:column; justify-content:center; padding:0 30px; cursor:pointer; }
+  .idle .clock { font-size:132px; line-height:.9; letter-spacing:-.03em; }
+  .idle .date { font-size:14px; letter-spacing:.2em; text-transform:uppercase; margin:14px 0 26px; }
+  .idle .line { border-top:2px solid var(--k); padding:10px 0; font:17px/1.45 Palatino, Georgia, serif; display:flex; justify-content:space-between; }
+  .idle .wake { position:absolute; bottom:22px; left:0; right:0; text-align:center; font-size:11px; letter-spacing:.2em; text-transform:uppercase; }
+  .offline { display:none; position:absolute; left:0; right:0; top:22px; height:30px; background:var(--k); color:var(--p); font-size:12px; align-items:center; justify-content:center; letter-spacing:.06em; z-index:5; }
+  .screen.off .offline { display:flex; }
+  svg.i { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  svg.s { width:17px; height:17px; }
+
+  .notes { max-width:1240px; margin:40px auto 0; display:flex; flex-wrap:wrap; gap:18px 26px; }
+  .note { flex:1 1 300px; border-top:3px solid var(--desk-ink); padding-top:10px; }
+  .note h3 { margin:0 0 8px; font:600 17px Palatino, Georgia, serif; }
+  .note ul { margin:0; padding-left:18px; } .note li { margin:3px 0; }
+</style>
+</head>
+<body>
+
+<!-- WHY: one hidden sprite; every icon is a short <use> reference instead of a repeated path, which keeps the file small -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="snow" viewBox="0 0 24 24"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M9 3.5l3 2 3-2M9 20.5l3-2 3 2"/></symbol>
+  <symbol id="power" viewBox="0 0 24 24"><path d="M12 3v8M6.3 6.8a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+  <symbol id="vac" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="2.5"/><path d="M7 16h10"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="drop" viewBox="0 0 24 24"><path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/></symbol>
+  <symbol id="door" viewBox="0 0 24 24"><path d="M14 21H5V3h9M14 12h7M18 9l3 3-3 3"/></symbol>
+  <symbol id="sprout" viewBox="0 0 24 24"><path d="M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 12c0-3 2.5-5 6.5-5 0 3.5-2.5 5-6.5 5"/></symbol>
+  <symbol id="wifi" viewBox="0 0 24 24"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r=".8"/></symbol>
+  <symbol id="cam" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></symbol>
+  <symbol id="dish" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 8h14"/><circle cx="12" cy="14" r="3"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></symbol>
+  <symbol id="refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+  <symbol id="chart" viewBox="0 0 24 24"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></symbol>
+  <symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
+
+<header class="top">
+  <h1>Inkhouse, design mockup</h1>
+  <p>The interactive design mockup used before the real panel was built: a Kindle Paperwhite drawn to scale, grayscale only, touch targets of at least 10 mm. The first screen is live (tap tiles, sheets and the bottom bar); the others are frozen states. All values are sample data. For the real page running on sample data, see the live demo.</p></header>
+
+<div class="toolbar">
+  <button id="tNight" aria-pressed="false">Night mode</button>
+  <button id="tIdle" aria-pressed="false">Idle clock</button>
+  <button id="tOff" aria-pressed="false">HA unreachable</button>
+  <button id="tReset">Reset demo</button>
+</div>
+
+<div class="stage">
+  <div class="slot"><h2>1 · Live demo</h2><div class="scaler"><div class="device"><div class="screen" id="s1"></div></div></div></div>
+  <div class="slot"><h2>2 · House page</h2><div class="scaler"><div class="device"><div class="screen" id="s2"></div></div></div></div>
+  <div class="slot"><h2>3 · Dishwasher sheet</h2><div class="scaler"><div class="device"><div class="screen" id="s3"></div></div></div></div>
+  <div class="slot"><h2>4 · Alerts sheet</h2><div class="scaler"><div class="device"><div class="screen" id="s5"></div></div></div></div>
+  <div class="slot"><h2>5 · Idle clock, night mode</h2><div class="scaler"><div class="device"><div class="screen" id="s4"></div></div></div></div>
+</div>
+
+<section class="notes">
+  <div class="note">
+    <h3>Borrowed from popular HA dashboards</h3>
+    <ul>
+      <li><b>Mushroom:</b> the round icon switches the device, the rest of the card opens details.</li>
+      <li><b>Bubble Card:</b> bottom navigation and pop-up sheets.</li>
+      <li><b>Minimalist UI:</b> rounded cards with one short state line.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h3>Made for e-ink</h3>
+    <ul>
+      <li>Black, paper and one gray; "on" is a filled circle and a thicker border.</li>
+      <li>No animation, so no ghosting; one redraw per change.</li>
+      <li>Risky actions (all AC off, unlock) ask first.</li>
+      <li>Idle clock after 2 minutes, night mode for the bedroom.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h3>Usual settings</h3>
+    <ul>
+      <li>The vacuum and dishwasher sheets underline the settings you normally use, so one tap starts your usual run.</li>
+      <li>In the real panel, the "usual" values come from the config file.</li>
+    </ul>
+  </div>
+</section>
+
+<script>
+// WHY: ES5 only (var, function), so the same code can run in the Kindle's old WebKit browser
+var CONFIG = {
+  title: 'Inkhouse',
+  climate: [
+    { id: 'living_room',    name: 'Living room', temp: 26.5, hum: 58,  hours: 2.6 },
+    { id: 'guest_bedroom',  name: 'Guest bed',   temp: 27.5, hum: 53,  hours: 12.6 },
+    { id: 'master_bedroom', name: 'Master bed',  temp: 27.0, hum: 56,  hours: 8.1 },
+    { id: 'maid_room',      name: 'Maid room',   temp: 25.5, hum: null, hours: 0.0 },
+    { id: 'kitchen',        name: 'Kitchen',     temp: 26.5, hum: 59,  hours: 0.0 },
+    { id: 'kids_bedroom',   name: 'Kids bed',    temp: 26.0, hum: 58,  hours: 0.0 }
+  ],
+  kwh: [['11', 21.9], ['12', 19.6], ['13', 11.7], ['14', 6.0], ['Today', 8.5]],
+  vacuum: { battery: 100, last: 'Wed 11 Nov, 11:09 PM', ago: '4 days ago', count: 34,
+    // WHY: each row maps one vacuum select in HA; 'usual' is the setting normally used
+    settings: [
+      { key: 'mode',   label: 'Mode',    entity: 'select.robot_cleaning_mode',   usual: 'Mop after', opts: ['Sweep', 'Mop', 'Both', 'Mop after'] },
+      { key: 'power',  label: 'Suction', entity: 'select.robot_suction_level',   usual: 'Standard',    opts: ['Quiet', 'Standard', 'Strong', 'Turbo'] },
+      { key: 'mop',    label: 'Mop',     entity: 'select.robot_mop_pad_humidity', usual: 'Moist',      opts: ['Dry', 'Moist', 'Wet'] },
+      { key: 'route',  label: 'Route',   entity: 'select.robot_cleaning_route',  usual: 'Standard',    opts: ['Quick', 'Standard', 'Intense', 'Deep'] },
+      { key: 'floor',  label: 'Floor',   entity: 'select.robot_selected_map',    usual: 'Ground',      opts: ['Ground', 'Upstairs'] }
+    ] },
+  // WHY: 'usual' is the program normally used; in the real panel it comes from the config
+  dish: { usual: 'Eco 50', progs: ['Eco 50', 'Auto', 'Quick 45', 'Quick 65', 'Intensive', 'Glass 40', 'Night', 'Pre-rinse'],
+          opts: ['Intensive zone', 'Speed', 'Hygiene', 'Half load', 'Silence'], whens: ['Now', '10 PM', '11 PM', 'Midnight'] },
+  // WHY: same rules as the HA automations, so the panel and the phone alerts agree
+  alerts: [
+    { name: 'Vacuum sensors', rule: 'clean within 4 h', active: true },
+    { name: 'Maid room AC', rule: 'on over 3 h', active: false },
+    { name: 'Guest bed AC', rule: 'on over 12 h', active: false },
+    { name: 'Master bed AC', rule: 'on over 12 h', active: false },
+    { name: 'NAS CPU', rule: 'over 80° for 10 min', active: false },
+    { name: 'NAS drive', rule: 'over 50° for 10 min', active: false },
+    { name: 'Door lock battery', rule: 'below 20%', active: false },
+    { name: 'Internet', rule: 'mesh WAN down', active: false }
+  ],
+  garden: { last: 'Today, 6:05 AM', lastZone: 'Back lawn', next: 'Tue 17 Nov, 6:00 AM' },
+  wifi: { internet: true, devices: 19, nodes: 5 },
+  cams: ['Nursery', 'Outdoor 1', 'Outdoor 2'],
+  dishwasher: 'Ready · door open'
+};
+
+function ic(id, small) { return '<svg class="i' + (small ? ' s' : '') + '"><use xlink:href="#' + id + '" href="#' + id + '"/></svg>'; }
+
+function initialState() {
+  var ac = {};
+  for (var i = 0; i < CONFIG.climate.length; i++) {
+    var c = CONFIG.climate[i];
+    ac[c.id] = { on: c.id === 'living_room' || c.id === 'guest_bedroom', set: 26, mode: 'Cool', fan: 'Auto', pending: false };
+  }
+  var vs = {}, V = CONFIG.vacuum.settings;
+  for (var v = 0; v < V.length; v++) vs[V[v].key] = V[v].usual;
+  return { page: 'control', ac: ac, vs: vs, ds: { prog: 'Eco 50', opts: {}, when: 'Now' }, dishState: 'ready', door: 'locked', vacuum: 'docked', sheet: null, dialog: null, offline: false, night: false, idle: false, busy: {} };
+}
+
+function Panel(el, state) {
+  this.el = el; this.s = state;
+  var self = this;
+  el.addEventListener('click', function (e) { self.onTap(e); });
+  this.render();
+}
+
+Panel.prototype.later = function (fn) { var self = this; setTimeout(function () { fn(); self.render(); }, 900); };
+
+Panel.prototype.dispatch = function (a) {
+  var s = this.s;
+  switch (a.type) {
+    case 'wake': s.idle = false; break;
+    case 'page': s.page = a.v; s.sheet = null; s.dialog = null; break;
+    case 'open': s.sheet = a.id; break;
+    case 'close': s.sheet = null; s.dialog = null; break;
+    case 'toggle':
+      var r = s.ac[a.id]; r.on = !r.on; r.pending = true;
+      // WHY: show "sending" at once, then let the (simulated) HA reply clear it
+      this.later(function () { r.pending = false; });
+      break;
+    case 'step': s.ac[a.id].set = Math.max(16, Math.min(30, s.ac[a.id].set + (+a.v))); break;
+    case 'mode': s.ac[a.id].mode = a.v; break;
+    case 'fan': s.ac[a.id].fan = a.v; break;
+    case 'askAllOff': s.dialog = 'alloff'; break;
+    case 'allOff': for (var k in s.ac) s.ac[k].on = false; s.dialog = null; break;
+    case 'door': if (s.door === 'locked') s.dialog = 'unlock'; else s.door = 'locked'; break;
+    case 'unlock': s.door = 'unlocked'; s.dialog = null; break;
+    case 'vset': s.vs[a.id] = a.v; break;
+    case 'vusual': for (var u = 0; u < CONFIG.vacuum.settings.length; u++) s.vs[CONFIG.vacuum.settings[u].key] = CONFIG.vacuum.settings[u].usual; break;
+    case 'vacStart': s.vacuum = 'cleaning'; s.sheet = null; break;
+    case 'dprog': s.ds.prog = a.v; break;
+    case 'dopt': s.ds.opts[a.v] = !s.ds.opts[a.v]; break;
+    case 'dwhen': s.ds.when = a.v; break;
+    case 'dstart': s.dishState = s.ds.when === 'Now' ? 'running' : 'delayed'; s.sheet = null; break;
+    case 'dstop': s.dishState = 'ready'; s.sheet = null; break;
+    case 'vacDock': s.vacuum = 'docked'; s.sheet = null; break;
+    case 'night': case 'leave':
+      var id = a.type; s.busy[id] = true;
+      if (id === 'night') { s.ac.living_room.on = false; s.ac.kitchen.on = false; s.door = 'locked'; }
+      else { for (var j in s.ac) s.ac[j].on = false; s.door = 'locked'; s.vacuum = 'cleaning'; }
+      this.later(function () { s.busy[id] = false; });
+      break;
+  }
+  this.render();
+};
+
+Panel.prototype.onTap = function (e) {
+  var t = e.target;
+  while (t && t !== this.el && !(t.getAttribute && t.getAttribute('data-a'))) t = t.parentNode;
+  if (!t || t === this.el) return;
+  this.dispatch({ type: t.getAttribute('data-a'), id: t.getAttribute('data-id'), v: t.getAttribute('data-v') });
+};
+
+Panel.prototype.alertCount = function () { var n = 0; for (var i = 0; i < CONFIG.alerts.length; i++) if (CONFIG.alerts[i].active) n++; return n; };
+
+Panel.prototype.vacCustom = function () {
+  var V = CONFIG.vacuum.settings;
+  for (var i = 0; i < V.length; i++) if (this.s.vs[V[i].key] !== V[i].usual) return true;
+  return false;
+};
+
+Panel.prototype.dishLabel = function () {
+  var s = this.s;
+  return s.dishState === 'running' ? s.ds.prog + ' · on' : s.dishState === 'delayed' ? 'Starts ' + s.ds.when : 'Ready · Eco 50';
+};
+
+Panel.prototype.acOnCount = function () { var n = 0; for (var k in this.s.ac) if (this.s.ac[k].on) n++; return n; };
+
+Panel.prototype.head = function (left, right) {
+  return '<div class="head"><div class="day">' + left + '</div><div class="right">' + right + '<div class="ib" data-a="refresh">' + ic('refresh', 1) + '</div></div></div>';
+};
+
+Panel.prototype.control = function () {
+  var s = this.s, tiles = '', i;
+  for (i = 0; i < CONFIG.climate.length; i++) {
+    var c = CONFIG.climate[i], r = s.ac[c.id];
+    tiles += '<div class="ac' + (r.on ? ' on' : '') + (r.pending ? ' pending' : '') + '" data-a="open" data-id="' + c.id + '">' +
+      '<div class="disc" data-a="toggle" data-id="' + c.id + '">' + ic(r.on ? 'snow' : 'power') + '</div>' +
+      '<div class="txt"><div class="nm">' + c.name + '</div><div class="st num">' + (r.on ? r.mode + ' · ' + r.set + '°' : 'Off · room ' + c.temp + '°') + '</div></div></div>';
+  }
+  var vac = s.vacuum === 'docked' ? '4 days ago' : 'Cleaning';
+  var house =
+    '<div class="hb" data-a="door">' + ic(s.door === 'locked' ? 'lock' : 'unlock') + '<div class="t">Front door</div><div class="v">' + (s.door === 'locked' ? 'Locked · 76%' : 'Unlocked') + '</div></div>' +
+    '<div class="hb" data-a="open" data-id="vacuum">' + ic('vac') + '<div class="t">Vacuum</div><div class="v">' + vac + '</div></div>' +
+    '<div class="hb" data-a="open" data-id="dish">' + ic('dish') + '<div class="t">Dishwasher</div><div class="v">' + this.dishLabel() + '</div></div>' +
+    '<div class="hb' + (s.busy.night ? ' pending' : '') + '" data-a="night">' + ic('moon') + '<div class="t">Good night</div><div class="v">routine</div></div>';
+  return '<div class="page' + (s.page === 'control' ? ' on' : '') + '">' + this.head('Sunday 15 Nov', '<span class="num">27.8° outside</span>') +
+    '<div class="label">Climate <b>' + this.acOnCount() + ' of 6 on</b></div><div class="acgrid">' + tiles + '</div>' +
+    '<div class="alloff" data-a="askAllOff">' + ic('power') + 'All AC off</div>' +
+    '<div class="label" style="margin-top:10px">House</div><div class="house">' + house + '</div></div>';
+};
+
+Panel.prototype.energy = function () {
+  var s = this.s, max = 0, i, bars = '', rows = '';
+  for (i = 0; i < CONFIG.kwh.length; i++) max = Math.max(max, CONFIG.kwh[i][1]);
+  for (i = 0; i < CONFIG.kwh.length; i++) {
+    var d = CONFIG.kwh[i], last = i === CONFIG.kwh.length - 1;
+    bars += '<div class="bar' + (last ? ' today' : '') + '" style="height:' + Math.round(d[1] / max * 100) + '%"><span class="num">' + d[1] + '</span><em>' + (last ? 'TODAY' : 'NOV ' + d[0]) + '</em></div>';
+  }
+  for (i = 0; i < CONFIG.climate.length; i++) {
+    var c = CONFIG.climate[i];
+    rows += '<tr><td>' + c.name + '</td><td><span class="dot' + (s.ac[c.id].on ? ' on' : '') + '"></span></td><td class="n">' + c.temp.toFixed(1) + '°</td><td class="n">' + (c.hum === null ? '–' : c.hum + '%') + '</td><td class="n">' + c.hours.toFixed(1) + '</td></tr>';
+  }
+  return '<div class="page' + (s.page === 'energy' ? ' on' : '') + '">' + this.head('Today so far', '<span>Updated 3:42</span>') +
+    '<div class="hero"><div class="big num">8.5<small>KWH</small></div><div class="side">estimated AC energy<br><span class="num">23.3</span> unit-hours · <span class="num">' + this.acOnCount() + '</span> on now<br>outside <span class="num">27.8° · 52%</span></div></div>' +
+    '<div class="bars">' + bars + '</div>' +
+    '<table class="rooms"><tr><th>Room</th><th>AC</th><th>Temp</th><th>Hum.</th><th>Hours</th></tr>' + rows + '</table>' +
+    '<p style="font-size:11px;margin:8px 2px 0">Estimated from AC run time.</p></div>';
+};
+
+Panel.prototype.housePage = function () {
+  var s = this.s, V = CONFIG.vacuum, G = CONFIG.garden, W = CONFIG.wifi, cams = '';
+  for (var i = 0; i < CONFIG.cams.length; i++) cams += '<div class="cam" data-a="cam"><span>' + CONFIG.cams[i] + '</span></div>';
+  return '<div class="page' + (s.page === 'house' ? ' on' : '') + '">' + this.head('House', '<span>Alex is home</span>') +
+    '<div class="cards">' +
+      '<div class="card" data-a="door"><div class="ct">' + ic(s.door === 'locked' ? 'lock' : 'unlock', 1) + 'Front door</div><div class="cv">' + (s.door === 'locked' ? 'Locked' : 'Unlocked') + '</div><div class="cs">Battery 76%</div></div>' +
+      '<div class="card" data-a="open" data-id="vacuum"><div class="ct">' + ic('vac', 1) + 'Vacuum</div><div class="cv">' + (s.vacuum === 'docked' ? 'Docked' : 'Cleaning') + '</div><div class="cs">Last clean ' + V.ago + '<br>Battery ' + V.battery + '%</div></div>' +
+      '<div class="card"><div class="ct">' + ic('sprout', 1) + 'Garden</div><div class="cv">Watered today</div><div class="cs">' + G.lastZone + ', 6:05 AM<br>Next: Tue 6:00 AM</div></div>' +
+      '<div class="card"><div class="ct">' + ic('wifi', 1) + 'Wi-Fi</div><div class="cv">' + (W.internet ? 'Online' : 'No internet') + '</div><div class="cs">' + W.devices + ' devices · ' + W.nodes + ' nodes</div></div>' +
+      '<div class="card wide"><div class="ct">' + ic('cam', 1) + 'Cameras · tap for a still</div><div class="cams">' + cams + '</div></div>' +
+      '<div class="card" data-a="open" data-id="dish"><div class="ct">' + ic('dish', 1) + 'Dishwasher</div><div class="cv">' + (s.dishState === 'ready' ? 'Ready' : s.dishState === 'running' ? 'Running' : 'Starts ' + s.ds.when) + '</div><div class="cs">' + (s.dishState === 'ready' ? 'Door open' : s.ds.prog) + '</div></div>' +
+      '<div class="card warn" data-a="open" data-id="alerts"><div class="ct">' + ic('bell', 1) + 'Alerts · ' + this.alertCount() + '</div><div class="cv">Vacuum sensors</div><div class="cs">Clean within 4 h<br>' + (CONFIG.alerts.length - 1) + ' more all clear</div></div>' +
+    '</div></div>';
+};
+
+Panel.prototype.sheetHtml = function () {
+  var s = this.s;
+  if (!s.sheet) return '';
+  if (s.sheet === 'vacuum') {
+    var V = CONFIG.vacuum, rows = '';
+    for (var p = 0; p < V.settings.length; p++) {
+      var st = V.settings[p], h = '<div class="sl">' + st.label + '</div><div class="seg sm">';
+      for (var q = 0; q < st.opts.length; q++) {
+        var o = st.opts[q];
+        h += '<div class="' + (o === s.vs[st.key] ? 'on ' : '') + (o === st.usual ? 'usual' : '') + '" data-a="vset" data-id="' + st.key + '" data-v="' + o + '">' + o + '</div>';
+      }
+      rows += h + '</div>';
+    }
+    var custom = this.vacCustom();
+    return '<div class="scrim" data-a="close"></div><div class="sheet" style="height:532px"><div class="grab"></div>' +
+      '<div class="top"><div><h3>Vacuum</h3><p class="num">' + (s.vacuum === 'docked' ? 'Docked' : 'Cleaning') + ' · battery ' + V.battery + '% · last clean ' + V.ago + '</p></div><div class="ib" data-a="close">' + ic('close') + '</div></div>' +
+      '<div class="vline">Underlined = your usual settings.</div>' + rows +
+      '<div class="two"><div class="pill" data-a="vacStart">' + ic('vac') + (custom ? 'Start custom' : 'Start usual') + '</div><div class="pill out" data-a="vacDock">' + ic('home') + 'Dock</div></div>' +
+      (custom ? '<div class="reset" data-a="vusual">Back to usual settings</div>' : '') + '</div>';
+  }
+  if (s.sheet === 'dish') {
+    var D = CONFIG.dish, pg = '<div class="sl">Program · usual ' + D.usual + '</div><div class="seg sm">', ot = '', wh = '<div class="sl">Start</div><div class="seg sm">';
+    for (var x = 0; x < D.progs.length; x++) {
+      if (x === 4) pg += '</div><div class="seg sm">';
+      pg += '<div class="' + (D.progs[x] === s.ds.prog ? 'on ' : '') + (D.progs[x] === D.usual ? 'usual' : '') + '" data-a="dprog" data-v="' + D.progs[x] + '">' + D.progs[x] + '</div>';
+    }
+    for (var y = 0; y < D.opts.length; y++) ot += '<div class="tg' + (s.ds.opts[D.opts[y]] ? ' on' : '') + '" data-a="dopt" data-v="' + D.opts[y] + '">' + D.opts[y] + '</div>';
+    for (var z = 0; z < D.whens.length; z++) wh += '<div class="' + (D.whens[z] === s.ds.when ? 'on' : '') + '" data-a="dwhen" data-v="' + D.whens[z] + '">' + D.whens[z] + '</div>';
+    var running = s.dishState !== 'ready';
+    return '<div class="scrim" data-a="close"></div><div class="sheet" style="height:532px"><div class="grab"></div>' +
+      '<div class="top"><div><h3>Dishwasher</h3><p>' + (running ? 'Running · ' + s.ds.prog : 'Ready · remote start on') + '</p></div><div class="ib" data-a="close">' + ic('close') + '</div></div>' +
+      pg + '</div><div class="sl">Options · usually all off</div><div class="tgs">' + ot + '</div>' + wh + '</div>' +
+      '<div class="two"><div class="pill" data-a="dstart">' + ic('dish') + (s.ds.when === 'Now' ? 'Start now' : 'Start ' + s.ds.when) + '</div><div class="pill out" data-a="dstop">Stop</div></div></div>';
+  }
+  if (s.sheet === 'alerts') {
+    var A = CONFIG.alerts, li = '';
+    for (var k = 0; k < A.length; k++) li += '<li><span><b>' + A[k].name + '</b> · ' + A[k].rule + '</span>' + (A[k].active ? '<span class="hot">Now</span>' : '<span class="ok">clear</span>') + '</li>';
+    return '<div class="scrim" data-a="close"></div><div class="sheet" style="height:470px"><div class="grab"></div>' +
+      '<div class="top"><div><h3>Alerts</h3><p>' + this.alertCount() + ' active · same rules as your phone alerts</p></div><div class="ib" data-a="close">' + ic('close') + '</div></div>' +
+      '<ul class="alist">' + li + '</ul></div>';
+  }
+  var c; for (var i = 0; i < CONFIG.climate.length; i++) if (CONFIG.climate[i].id === s.sheet) c = CONFIG.climate[i];
+  var r = s.ac[c.id];
+  function seg(kind, opts, cur) {
+    var h = '<div class="seg">';
+    for (var j = 0; j < opts.length; j++) h += '<div class="' + (opts[j] === cur ? 'on' : '') + '" data-a="' + kind + '" data-id="' + c.id + '" data-v="' + opts[j] + '">' + opts[j] + '</div>';
+    return h + '</div>';
+  }
+  return '<div class="scrim" data-a="close"></div><div class="sheet"><div class="grab"></div>' +
+    '<div class="top"><div><h3>' + c.name + '</h3><p class="num">Room ' + c.temp + '°' + (c.hum ? ' · ' + c.hum + '% humidity' : '') + ' · ' + c.hours + ' h today</p></div><div class="ib" data-a="close">' + ic('close') + '</div></div>' +
+    '<div class="setp"><div class="round" data-a="step" data-id="' + c.id + '" data-v="-1">−</div><div class="val num">' + r.set + '<sup>°</sup></div><div class="round" data-a="step" data-id="' + c.id + '" data-v="1">+</div></div>' +
+    '<div class="sl">Mode</div>' + seg('mode', ['Cool', 'Dry', 'Fan', 'Auto'], r.mode) +
+    '<div class="sl">Fan</div>' + seg('fan', ['Auto', 'Low', 'Mid', 'High'], r.fan) +
+    '<div class="pill' + (r.on ? '' : ' out') + '" data-a="toggle" data-id="' + c.id + '" style="margin-top:6px">' + ic('power') + (r.on ? 'Turn off' : 'Turn on') + '</div></div>';
+};
+
+Panel.prototype.dialogHtml = function () {
+  var d = this.s.dialog;
+  if (!d) return '';
+  var h = d === 'alloff'
+    ? '<h3>Turn off all ACs?</h3><p>All six units will switch off. Schedules set in your AC app are not changed.</p><div class="two"><div class="pill out" data-a="close">Cancel</div><div class="pill" data-a="allOff">Turn off</div></div>'
+    : '<h3>Unlock the front door?</h3><p>The front door will unlock now.</p><div class="two"><div class="pill out" data-a="close">Cancel</div><div class="pill" data-a="unlock">Unlock</div></div>';
+  return '<div class="scrim" data-a="close"></div><div class="dialog">' + h + '</div>';
+};
+
+Panel.prototype.idleHtml = function () {
+  if (!this.s.idle) return '';
+  var n = this.acOnCount();
+  return '<div class="idle" data-a="wake"><div class="clock num">3:42</div><div class="date">Sunday · 15 November</div>' +
+    '<div class="line"><span>Outside</span><span>27.8° · 52%</span></div>' +
+    '<div class="line"><span>Air conditioning</span><span>' + (n ? n + ' on' : 'all off') + '</span></div>' +
+    '<div class="line"><span>Front door</span><span>' + (this.s.door === 'locked' ? 'locked' : 'unlocked') + '</span></div>' +
+    '<div class="wake">Tap anywhere</div></div>';
+};
+
+Panel.prototype.render = function () {
+  var s = this.s;
+  this.el.className = 'screen' + (s.offline ? ' off' : '') + (s.night ? ' night' : '');
+  function tab(id, icon, label) { return '<div class="' + (s.page === id ? 'on' : '') + '" data-a="page" data-v="' + id + '">' + ic(icon, 1) + label + '</div>'; }
+  this.el.innerHTML =
+    '<div class="kbar"><span>' + CONFIG.title + '</span><span>3:42 PM · Wi-Fi · 71%</span></div>' +
+    '<div class="offline">HA unreachable · showing values from 3:40</div>' +
+    this.control() + this.energy() + this.housePage() +
+    '<div class="nav">' + tab('control', 'grid', 'Control') + tab('house', 'home', 'House · ' + this.alertCount()) + tab('energy', 'chart', 'Energy') + '</div>' +
+    this.sheetHtml() + this.dialogHtml() + this.idleHtml();
+};
+
+var live;
+function boot() {
+  live = new Panel(document.getElementById('s1'), initialState());
+  var b = initialState(); b.page = 'house'; new Panel(document.getElementById('s2'), b);
+  var c = initialState(); c.sheet = 'dish'; new Panel(document.getElementById('s3'), c);
+  var e = initialState(); e.page = 'house'; e.sheet = 'alerts'; new Panel(document.getElementById('s5'), e);
+  var d = initialState(); d.idle = true; d.night = true; new Panel(document.getElementById('s4'), d);
+  var btns = document.querySelectorAll('.toolbar button[aria-pressed]');
+  for (var i = 0; i < btns.length; i++) btns[i].setAttribute('aria-pressed', 'false');
+}
+boot();
+
+function toggleBtn(id, key) {
+  var b = document.getElementById(id);
+  b.addEventListener('click', function () {
+    var on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    live.s[key] = on; live.render();
+  });
+}
+toggleBtn('tNight', 'night'); toggleBtn('tIdle', 'idle'); toggleBtn('tOff', 'offline');
+document.getElementById('tReset').addEventListener('click', boot);
+
+// Live demo: the idle clock button turns off again when you tap the clock
+document.getElementById('s1').addEventListener('click', function () {
+  if (!live.s.idle) document.getElementById('tIdle').setAttribute('aria-pressed', 'false');
+});
+
+// Shrink the 452 px devices to fit phone screens, keeping proportions
+function fit() {
+  var w = Math.min(1, (window.innerWidth - 32) / 452), els = document.querySelectorAll('.scaler');
+  for (var i = 0; i < els.length; i++) {
+    els[i].style.transform = w < 1 ? 'scale(' + w + ')' : '';
+    els[i].style.height = w < 1 ? (624 * w) + 'px' : '';
+  }
+}
+window.addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

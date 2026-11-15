@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inkhouse first options</title>
+<style>
+  :root { --bg:#e9e7e2; --ink:#111; --paper:#f2f1ec; --line:#111; --soft:#cfcdc6; --mid:#8c8a84; --note:#2b4a7a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1b1a; --note:#9db8e6; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system,system-ui,sans-serif; padding:24px 16px 60px; }
+  @media (prefers-color-scheme: dark) { body { color:#e8e6e0; } }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:18px; margin:0 0 4px; }
+  .sub { opacity:.75; margin:0 0 20px; max-width:70ch; }
+  .wrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:36px; max-width:1100px; margin:0 auto; }
+  .col { min-width:0; }
+  .kindle { width:100%; max-width:380px; margin:12px auto 0; background:#1d1d1d; border-radius:26px; padding:22px 18px 30px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+  .screen { background:var(--paper); color:#111; aspect-ratio:3/4; border-radius:4px; overflow:hidden; position:relative; font-family:Georgia,'Times New Roman',serif; }
+  .bar { display:flex; justify-content:space-between; padding:5px 10px; border-bottom:2px solid var(--line); font:600 11px/1 sans-serif; }
+  .hdr { padding:6px 10px; display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--line); }
+  .hdr b { font-size:16px; } .hdr span { font:11px sans-serif; }
+  .tabs { display:flex; border-bottom:2px solid var(--line); font:700 11px sans-serif; }
+  .tabs div { flex:1; text-align:center; padding:6px 0; border-right:1px solid var(--line); } .tabs div:last-child { border-right:0; }
+  .tabs .on { background:#111; color:#f2f1ec; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px; }
+  .tile { border:2px solid var(--line); border-radius:6px; padding:5px 6px; background:#f7f6f1; }
+  .tile.on { background:#111; color:#f2f1ec; }
+  .tile .n { font:700 11px sans-serif; display:flex; justify-content:space-between; }
+  .tile .s { font:10px sans-serif; opacity:.9; margin:1px 0 3px; }
+  .step { display:flex; gap:4px; align-items:center; font:700 12px sans-serif; }
+  .step i { flex:1; text-align:center; border:1.5px solid currentColor; border-radius:4px; font-style:normal; padding:1px 0; }
+  .step u { text-decoration:none; width:34px; text-align:center; font-size:11px; }
+  .wide { grid-column:1 / -1; }
+  .btn { border:2px solid var(--line); border-radius:6px; text-align:center; font:700 11px sans-serif; padding:6px 4px; background:#f7f6f1; }
+  .btn.dark { background:#111; color:#f2f1ec; }
+  .btn.dash { border-style:dashed; }
+  .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:0 8px 8px; }
+  .foot { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between; padding:5px 10px; border-top:1px solid var(--line); font:10px sans-serif; background:var(--paper); }
+  .page { padding:14px 16px; font-size:11.5px; line-height:1.5; color:#222; text-align:justify; }
+  .page p { margin:0 0 7px; } .page .ch { font:700 13px sans-serif; text-align:center; margin-bottom:8px; }
+  .dim { filter:contrast(.8) brightness(1.05); opacity:.55; }
+  .dialog { position:absolute; left:8%; right:8%; top:12%; background:var(--paper); border:3px solid #111; border-radius:8px; box-shadow:5px 5px 0 #111; font-family:sans-serif; }
+  .dialog .t { text-align:center; font:700 11px sans-serif; padding:6px; border-bottom:2px solid #111; }
+  .dialog .b { text-align:center; font:600 12px sans-serif; padding:8px 4px; border-bottom:1px solid #111; }
+  .dialog .b:last-child { border-bottom:0; }
+  .dialog .b small { font-weight:400; opacity:.7; font-size:9.5px; display:block; }
+  .pop { position:absolute; left:14%; right:14%; bottom:10%; background:var(--paper); border:3px solid #111; border-radius:8px; font:12px/1.4 sans-serif; padding:8px 10px; text-align:center; }
+  .notes { margin-top:16px; background:rgba(127,127,127,.12); border-left:4px solid var(--note); padding:10px 14px; border-radius:6px; }
+  .notes h3 { margin:0 0 6px; font-size:14px; color:var(--note); }
+  .notes ul { margin:0; padding-left:18px; } .notes li { margin:2px 0; }
+  .tag { display:inline-block; font:700 11px sans-serif; padding:2px 8px; border-radius:10px; background:var(--note); color:#fff; margin-left:6px; vertical-align:middle; }
+  .lim { border-left-color:#a35a00; } .lim h3 { color:#a35a00; }
+  @media (prefers-color-scheme: dark) { .lim h3 { color:#f0b060; } }
+</style>
+</head>
+<body>
+<h1>Kindle Paperwhite 4 panel: two touch options</h1>
+<p class="sub">Both mockups use grayscale only, because the e-ink screen has no colour. The real screen is 1072 x 1448 pixels, drawn here at 3:4. These are drawings of what the layout could look like, not screenshots of a working build.</p>
+
+<div class="wrap">
+
+<!-- BROWSER TILES -->
+<div class="col">
+  <h2>A. Browser page with tiles <span class="tag">most customizable</span></h2>
+  <div class="kindle"><div class="screen">
+    <div class="bar"><span>Home</span><span>3:42 PM &nbsp; Wi-Fi &nbsp; 71%</span></div>
+    <div class="hdr"><b>Home panel</b><span>Outside 28° · AC 8.4 kWh today</span></div>
+    <div class="tabs"><div class="on">Control</div><div>Status</div><div>Rooms</div></div>
+    <div class="grid">
+      <div class="tile on"><div class="n"><span>Living room</span><span>ON</span></div><div class="s">Cool · 26° · 2.6 h</div><div class="step"><u>−</u><i>26°</i><u>+</u></div></div>
+      <div class="tile"><div class="n"><span>Kitchen</span><span>off</span></div><div class="s">0.0 h today</div><div class="step"><u>−</u><i>tap to turn on</i><u>+</u></div></div>
+      <div class="tile on"><div class="n"><span>Master bed</span><span>ON</span></div><div class="s">Cool · 25° · 8.1 h</div><div class="step"><u>−</u><i>25°</i><u>+</u></div></div>
+      <div class="tile"><div class="n"><span>Kids bed</span><span>off</span></div><div class="s">0.0 h today</div><div class="step"><u>−</u><i>tap to turn on</i><u>+</u></div></div>
+      <div class="tile on"><div class="n"><span>Guest bed</span><span>ON</span></div><div class="s">Cool · 26° · 12.6 h</div><div class="step"><u>−</u><i>26°</i><u>+</u></div></div>
+      <div class="tile"><div class="n"><span>Maid room</span><span>off</span></div><div class="s">0.0 h today</div><div class="step"><u>−</u><i>tap to turn on</i><u>+</u></div></div>
+      <div class="btn dark wide" style="font-size:13px;padding:9px">ALL AC OFF &nbsp;(asks to confirm)</div>
+    </div>
+    <div class="row3">
+      <div class="btn">Door: LOCKED<br><small style="font-weight:400">tap = lock</small></div>
+      <div class="btn">Vacuum<br><small style="font-weight:400">docked · start</small></div>
+      <div class="btn">Garden<br><small style="font-weight:400">pause 24 h</small></div>
+    </div>
+    <div class="foot"><span>Updated 3:42 PM</span><span>[ Refresh ]</span></div>
+  </div></div>
+  <div class="notes">
+    <h3>What you can customize (everything, since we write the page)</h3>
+    <ul>
+      <li>Which tiles appear, their order, names, size (1 or 2 columns) and grouping into tabs.</li>
+      <li>Tile type: on/off, temperature steps, scene, script, read-only value, or a confirm-first button.</li>
+      <li>Font size, border thickness, inverted "on" look, number of columns, how often it refreshes.</li>
+      <li>Your own rules: for example "unlock needs a second tap" or hiding the lock at night.</li>
+      <li>Any HA value on screen: kWh today, NAS temperature, humidity, hours the AC ran.</li>
+    </ul>
+  </div>
+  <div class="notes lim">
+    <h3>Limits</h3>
+    <ul>
+      <li>The Kindle's browser is old, so simple layout and plain JavaScript only. No animation.</li>
+      <li>Tapping redraws the page, and e-ink flashes on each full refresh.</li>
+      <li>It updates only while the page is open and awake.</li>
+      <li>Existing ready-made version: Kindle-Home-Assistant-Remote (derekmcauley7), or we build our own.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- KOREADER PLUGIN -->
+<div class="col">
+  <h2>B. KOReader plugin <span class="tag">simplest to set up</span></h2>
+  <div class="kindle"><div class="screen">
+    <div class="page dim">
+      <div class="ch">Chapter 12</div>
+      <p>The house was quiet by the time the last of the guests had gone, and the long corridor looked longer than it had in the morning. She set the book down and listened to the air conditioner hum.</p>
+      <p>Somewhere upstairs a door closed. The lamp on the table threw a small circle of light across the page, and for a moment nothing seemed to need doing at all.</p>
+      <p>Then the phone buzzed again, and the evening resumed its ordinary shape.</p>
+      <p>She reached for the cup and found it cold. The garden outside had gone from green to grey.</p>
+    </div>
+    <div class="dialog">
+      <div class="t">Home Assistant</div>
+      <div class="b">AC Living room: toggle</div>
+      <div class="b">AC Master bedroom: toggle</div>
+      <div class="b">AC Guest bedroom: toggle</div>
+      <div class="b">All AC off</div>
+      <div class="b">Lock front door</div>
+      <div class="b">Vacuum: start</div>
+      <div class="b">Status: AC kWh today <small>shows a popup</small></div>
+    </div>
+    <div class="pop">AC today: 8.4 kWh<br>On now: Living, Master, Guest</div>
+    <div class="foot"><span>Chapter 12</span><span>Page 214 of 380 &nbsp; 71%</span></div>
+  </div></div>
+  <div class="notes">
+    <h3>What you can customize</h3>
+    <ul>
+      <li>Which buttons appear, their labels and their order (edited in one text config file).</li>
+      <li>Each button can run any HA action: toggle, set temperature, run a script, lock, start the vacuum.</li>
+      <li>Status popups: any value or HA template ("AC today: 8.4 kWh").</li>
+      <li>Open it from the menu or bind it to a gesture, such as a long-press in a screen corner.</li>
+      <li>It sits on top of your books, so it works from inside the reader.</li>
+    </ul>
+  </div>
+  <div class="notes lim">
+    <h3>Limits</h3>
+    <ul>
+      <li>A plain text list only. No tiles, no sliders, no live state on the buttons.</li>
+      <li>Config is a hand-written Lua file, so one wrong comma breaks it. I can write it for you.</li>
+      <li>Changes need a KOReader restart to show. No HTTPS support, plain HTTP only.</li>
+      <li>One ready-made plugin (moritz-john/homeassistant.koplugin). A custom one means writing Lua.</li>
+    </ul>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+services:
+  inkhouse:
+    image: node:22-alpine
+    container_name: inkhouse
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "server.js"]
+    ports:
+      - "8190:8190"
+    env_file:
+      - ./.env
+    volumes:
+      - ./:/app:ro
