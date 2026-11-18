@@ -88,5 +88,10 @@
     "cameras": [{ "name": "Porch", "entity": "camera.porch" }],
     "labels": { "Map 1": "Downstairs", "Map 2": "Upstairs" },
     "alerts": { "nasCpu": 80, "nasDrive": 50, "lockBattery": 20, "vacuumSensorHours": 5 }
+  },
+  "kindle": {
+    "light": "input_number.kindle_front_light", "sleep": "input_number.kindle_sleep_minutes", "awake": "input_boolean.kindle_keep_awake",
+    "refresh": "input_button.kindle_refresh_screen", "reload": "input_button.kindle_reload_panel", "exit": "input_button.kindle_exit_panel",
+    "report": "input_button.kindle_report_now", "restart": "input_button.kindle_restart"
   }
 }

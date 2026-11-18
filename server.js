@@ -27,6 +27,9 @@ const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 const control = config.control || {};
 // WHY: the read set is everything the UI shows plus everything it may control, so state for a button is always present
 const readSet = new Set([...(config.read || []), ...Object.keys(control)]);
+// Optional: HA helpers the Kindle's launcher script obeys (settings and buttons set from HA), name -> entity
+const kindleCmd = config.kindle || {};
+for (const e of Object.values(kindleCmd)) readSet.add(e);
 
 // Only these attributes are sent to the panel, per domain; the rest of HA's state stays on the server
 const ATTRS = {
@@ -255,6 +258,17 @@ const server = http.createServer((req, res) => {
     kindle = { b, c, at: Date.now() / 1000 | 0 };
     bump();
     return json(req, res, 200, { ok: true });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/kindle/cmd') {
+    // The Kindle script polls this for what HA wants: plain "name=value" lines that busybox can parse.
+    // Settings are numbers; buttons are their last-pressed time, so a new value means "pressed".
+    const lines = Object.entries(kindleCmd).map(([k, e]) => {
+      let s = cache[e] ? cache[e].s : '';
+      if (/^-?\d+\.0$/.test(s)) s = s.slice(0, -2);
+      return k + '=' + s.replace(/[^\w:.+-]/g, '');
+    });
+    return send(req, res, 200, lines.join('\n') + '\n', 'text/plain; charset=utf-8');
   }
 
   if (req.method === 'GET' && url.pathname === '/api/cam') {
