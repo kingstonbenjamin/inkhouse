@@ -153,6 +153,23 @@ const VERBS = {
   run:         () => ['script', 'turn_on', {}],
 };
 
+// Verbs that make several calls in order. Every step is checked like a single action.
+const SEQUENCES = {
+  // Vacuum wizard: { select entity: option, ... } and then start, so the robot cleans with exactly those settings.
+  // WHY: the robot reads its settings when it starts, so each select is set (1 s apart, like HA's own script) before vacuum.start
+  start_with: (e, v) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('bad settings');
+    const calls = [];
+    for (const sel of Object.keys(v)) {
+      if (!(control[sel] || []).includes('select')) throw new Error('not allowed');
+      const option = checkOption(sel, v[sel]);
+      if (cache[sel].s !== option) calls.push([sel, 'select', 'select_option', { option }]);
+    }
+    calls.push([e, 'vacuum', 'start', {}]);
+    return calls;
+  },
+};
+
 function clampTemp(e, v) {
   const n = Number(v), a = (cache[e] && cache[e].a) || {};
   if (!Number.isFinite(n)) throw new Error('bad temperature');
@@ -169,19 +186,22 @@ let recent = [];
 async function runAction(body) {
   const { e, v } = body, verb = body.do;
   const allowed = control[e];
-  if (!allowed || !allowed.includes(verb) || !VERBS[verb]) return { code: 403, out: { ok: false, error: 'not allowed' } };
+  if (!allowed || !allowed.includes(verb) || !(VERBS[verb] || SEQUENCES[verb])) return { code: 403, out: { ok: false, error: 'not allowed' } };
   const now = Date.now();
   recent = recent.filter((t) => now - t < 2000);
   if (recent.length >= 6) return { code: 429, out: { ok: false, error: 'too many taps' } };
   recent.push(now);
-  let call;
-  try { call = VERBS[verb](e, v); } catch (err) { return { code: 400, out: { ok: false, error: err.message } }; }
-  const [domain, service, data] = call;
-  if (DRY_RUN) { console.log('[dry run]', domain + '.' + service, e, JSON.stringify(data)); return { code: 200, out: { ok: true, dry: true } }; }
-  try {
-    await haSend({ type: 'call_service', domain, service, service_data: data, target: { entity_id: e } });
-    return { code: 200, out: { ok: true } };
-  } catch (err) { return { code: 502, out: { ok: false, error: err.message } }; }
+  let calls;   // [[entity, domain, service, data], ...]
+  try { calls = SEQUENCES[verb] ? SEQUENCES[verb](e, v) : [[e, ...VERBS[verb](e, v)]]; }
+  catch (err) { return { code: err.message === 'not allowed' ? 403 : 400, out: { ok: false, error: err.message } }; }
+  for (let i = 0; i < calls.length; i++) {
+    const [target, domain, service, data] = calls[i];
+    if (DRY_RUN) { console.log('[dry run]', domain + '.' + service, target, JSON.stringify(data)); continue; }
+    if (i) await new Promise((r) => setTimeout(r, 1000));
+    try { await haSend({ type: 'call_service', domain, service, service_data: data, target: { entity_id: target } }); }
+    catch (err) { return { code: 502, out: { ok: false, error: err.message } }; }
+  }
+  return { code: 200, out: DRY_RUN ? { ok: true, dry: true } : { ok: true } };
 }
 
 // ---------- Camera stills ----------

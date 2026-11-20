@@ -31,9 +31,11 @@
     "climate.living_room": ["power", "temperature", "hvac_mode", "fan_mode"],
     "climate.bedroom": ["power", "temperature", "hvac_mode", "fan_mode"],
     "lock.front_door": ["lock", "unlock"],
-    "vacuum.robot": ["start", "dock"],
+    "vacuum.robot": ["start", "dock", "start_with"],
     "select.robot_cleaning_mode": ["select"],
     "select.robot_suction_level": ["select"],
+    "select.robot_mop_humidity": ["select"],
+    "select.robot_cleaning_route": ["select"],
     "button.robot_reset_sensor": ["press"],
     "button.robot_shortcut": ["press"],
     "select.dishwasher_selected_program": ["select"],
@@ -61,8 +63,10 @@
       "lastClean": "sensor.robot_last_clean",
       "sensorDirty": "sensor.robot_sensor_time_left",
       "settings": [
-        { "label": "Mode", "entity": "select.robot_cleaning_mode", "usual": "sweeping_and_mopping" },
-        { "label": "Suction", "entity": "select.robot_suction_level", "usual": "standard" }
+        { "label": "Mode", "entity": "select.robot_cleaning_mode", "usual": "sweeping_and_mopping", "step": 1 },
+        { "label": "Suction", "entity": "select.robot_suction_level", "usual": "standard", "step": 2 },
+        { "label": "Mop", "entity": "select.robot_mop_humidity", "usual": "moist", "step": 2, "offFor": ["sweeping"] },
+        { "label": "Route", "entity": "select.robot_cleaning_route", "usual": "standard", "step": 3 }
       ],
       "resetSensor": "button.robot_reset_sensor",
       "shortcut": { "name": "Daily", "entity": "button.robot_shortcut" }

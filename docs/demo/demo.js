@@ -23,10 +23,10 @@
     vacuum: {
       entity: 'vacuum.robot', battery: 'sensor.robot_battery', lastClean: 'sensor.robot_last_clean', sensorDirty: 'sensor.robot_sensor_time_left',
       settings: [
-        { label: 'Mode', entity: 'select.robot_cleaning_mode', usual: 'mopping_after_sweeping' },
-        { label: 'Suction', entity: 'select.robot_suction_level', usual: 'standard' },
-        { label: 'Mop', entity: 'select.robot_mop_humidity', usual: 'moist' },
-        { label: 'Route', entity: 'select.robot_route', usual: 'standard' },
+        { label: 'Mode', entity: 'select.robot_cleaning_mode', usual: 'mopping_after_sweeping', step: 1 },
+        { label: 'Suction', entity: 'select.robot_suction_level', usual: 'standard', step: 2 },
+        { label: 'Mop', entity: 'select.robot_mop_humidity', usual: 'moist', step: 2, offFor: ['sweeping'] },
+        { label: 'Route', entity: 'select.robot_route', usual: 'standard', step: 3 },
         { label: 'Floor', entity: 'select.robot_map', usual: 'Map 1' }
       ],
       resetSensor: 'button.robot_reset_sensor', shortcut: { name: 'Daily', entity: 'button.robot_shortcut' }
@@ -79,13 +79,15 @@
   for (var k in OPTS) put(k, ui.vacuum.settings[{ 'select.robot_cleaning_mode': 0, 'select.robot_suction_level': 1, 'select.robot_mop_humidity': 2, 'select.robot_route': 3, 'select.robot_map': 4 }[k]].usual, { options: OPTS[k] });
   put('button.robot_reset_sensor', 'unknown'); put('button.robot_shortcut', 'unknown');
   var PROGS = ['dishcare_dishwasher_program_eco_50', 'dishcare_dishwasher_program_auto_2', 'dishcare_dishwasher_program_quick_45', 'dishcare_dishwasher_program_quick_65',
-    'dishcare_dishwasher_program_intensiv_70', 'dishcare_dishwasher_program_glas_40', 'dishcare_dishwasher_program_night_wash', 'dishcare_dishwasher_program_pre_rinse'];
+    'dishcare_dishwasher_program_intensiv_70', 'dishcare_dishwasher_program_glas_40', 'dishcare_dishwasher_program_night_wash', 'dishcare_dishwasher_program_pre_rinse', 'dishcare_dishwasher_program_machine_care'];
   put('sensor.dishwasher_operation_state', 'ready'); put('sensor.dishwasher_door', 'closed');
   put('sensor.dishwasher_finish_time', 'unavailable'); put('sensor.dishwasher_progress', 'unavailable');
   put('binary_sensor.dishwasher_remote_start', 'on');
   put('select.dishwasher_selected_program', PROGS[0], { options: PROGS }); put('select.dishwasher_active_program', 'unknown', { options: PROGS });
   put('number.dishwasher_start_in_relative', '0', { min: 0, max: 86460, step: 60 });
   for (i = 0; i < ui.dishwasher.options.length; i++) put(ui.dishwasher.options[i].entity, 'off');
+  // Like Home Connect: some options don't exist for the selected program
+  put('switch.dishwasher_hygiene', 'unavailable');
   put('button.dishwasher_stop_program', 'unknown');
   put('script.ac_all_off', 'off'); put('script.good_night', 'off');
   put('binary_sensor.front_lawn_watering', 'off', {}, 30); put('binary_sensor.back_lawn_watering', 'off', {}, 6);
@@ -114,6 +116,7 @@
       case 'lock': set(id, 'locked'); break;
       case 'unlock': set(id, 'unlocked'); break;
       case 'start': set(id, 'cleaning'); break;
+      case 'start_with': for (var sel in v) set(sel, v[sel]); set(id, 'cleaning'); break;
       case 'dock': set(id, 'returning'); setTimeout(function () { set(id, 'docked'); bump(); }, 4000); break;
       case 'select':
         if (id === ui.dishwasher.active) { set(ui.dishwasher.state, delay > 0 ? 'delayedstart' : 'run'); set(ui.dishwasher.selected, v); delay = 0; }

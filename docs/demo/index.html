@@ -102,6 +102,25 @@ table.rooms { width:100%; border-collapse:collapse; font-size:13px; }
 .tg:nth-child(3n) { margin-right:0; }
 .tg.on { background:#111; color:#f3f1ea; }
 .tg.dis { border-style:dashed; color:#8d8a83; }
+/* Wizards (dishwasher, vacuum): one choice per screen, step dots under the title */
+.sheet .top .btns { display:flex; } .sheet .top .btns .ib + .ib { margin-left:8px; }
+.steps { display:inline-block; margin-right:6px; }
+.steps i { display:inline-block; width:9px; height:9px; border-radius:50%; border:2px solid #111; margin-right:4px; }
+.steps i.on { background:#111; }
+.wzs { display:flex; flex-wrap:wrap; margin-bottom:6px; }
+.wz { width:48.5%; margin:0 3% 8px 0; height:60px; border:2px solid #111; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; cursor:pointer; text-align:center; }
+.wz:nth-child(2n) { margin-right:0; }
+.wzs.three .wz { width:32%; margin-right:2%; height:56px; font-size:13px; }
+.wzs.three .wz:nth-child(3n) { margin-right:0; }
+.wz.on { background:#111; color:#f3f1ea; }
+.wz.usual { text-decoration:underline; }
+.seg.dis { border-style:dashed; color:#8d8a83; }
+.orow { height:48px; border:2px solid #111; border-radius:16px; display:flex; align-items:center; padding:0 12px; margin-bottom:6px; font-size:14px; font-weight:600; cursor:pointer; }
+.orow .tick { flex:none; width:22px; height:22px; border:2px solid #111; border-radius:6px; margin-right:12px; }
+.orow.on .tick { background:#111; }
+.orow.dis { border-style:dashed; color:#8d8a83; }
+.orow.dis .tick { border-style:dashed; border-color:#8d8a83; }
+.orow small { margin-left:auto; font-weight:400; font-size:11px; }
 .reset { font-size:12px; text-decoration:underline; cursor:pointer; padding:12px 4px; }
 .vline { font-size:12.5px; margin:0 0 10px; }
 .alist { list-style:none; margin:6px 0 0; padding:0; }
@@ -142,6 +161,7 @@ svg.s { width:17px; height:17px; }
 <symbol id="chart" viewBox="0 0 24 24"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></symbol>
 <symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></symbol>
 <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
 </svg>
 <div id="app"></div>
 <script src="demo.js"></script>
@@ -171,7 +191,9 @@ var MONTHS_L = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 var app = document.getElementById('app');
 var TITLE = 'Inkhouse', UI = null, ST = { e: {} }, V = -1, haOk = true, netOk = true;
 var view = { page: 'control', sheet: null, dialog: null, idle: false, night: false };
-var pend = {}, errs = {}, localTemp = {}, tempTimer = {}, dish = { prog: null, when: 0 }, toast = null, toastTimer = null;
+var pend = {}, errs = {}, localTemp = {}, tempTimer = {}, toast = null, toastTimer = null;
+// Wizard state: step 0 = the sheet's main view, 1-3 = wizard steps
+var dish = { step: 0, prog: null }, vac = { step: 0, pick: {} };
 var lastTap = new Date().getTime(), pollReq = null;
 
 try { view.night = window.localStorage && localStorage.getItem('ink-night') === '1'; } catch (e) {}
@@ -274,6 +296,28 @@ function vacUsual() {
   var st = UI.vacuum.settings;
   for (var i = 0; i < st.length; i++) if (!bad(S(st[i].entity)) && S(st[i].entity) !== st[i].usual) return false;
   return true;
+}
+// Vacuum settings with "step": 1-3 form the wizard (mode -> power -> route); the rest stay on the main sheet
+function vacStep(n) {
+  var out = [], st = UI.vacuum.settings;
+  for (var i = 0; i < st.length; i++) if (st[i].step === n) out.push(st[i]);
+  return out;
+}
+function vacWizard() { return vacStep(1).length > 0 && vacStep(3).length > 0; }
+// A setting is skipped when HA has no options for it right now, or the chosen mode doesn't use it ("offFor", e.g. no mop when sweeping)
+function vacMode(useUsual) { var m = vacStep(1)[0]; return m ? (useUsual ? m.usual : vac.pick[m.entity]) : null; }
+function vacSkip(st, mode) {
+  return bad(S(st.entity)) || !(A(st.entity, 'options') || []).length || !!(st.offFor && st.offFor.indexOf(mode) > -1);
+}
+// What the wizard (or "Start usual", which also sets the settings outside the wizard) sends with start_with
+function vacPicks(useUsual) {
+  var p = {}, st = UI.vacuum.settings, mode = vacMode(useUsual);
+  for (var i = 0; i < st.length; i++) {
+    if (vacSkip(st[i], mode) || (!useUsual && !st[i].step)) continue;
+    var v = useUsual ? st[i].usual : vac.pick[st[i].entity];
+    if (v && (A(st[i].entity, 'options') || []).indexOf(v) > -1) p[st[i].entity] = v;
+  }
+  return p;
 }
 function lastClean() { return UI.vacuum && parseISO(S(UI.vacuum.lastClean)); }
 function alerts() {
@@ -428,6 +472,18 @@ function sheetHtml(al) {
   var sh = view.sheet, i;
   if (!sh) return '';
   var top = function (title, sub) { return '<div class="top"><div><h3>' + title + '</h3><p class="num">' + sub + '</p></div><div class="ib" data-a="close">' + ic('close') + '</div></div>'; };
+  // Wizard title: step dots (like the Sticky's) and the step name, with Back next to Close
+  var wtop = function (title, step, name) {
+    var dots = '';
+    for (var k = 1; k <= 3; k++) dots += '<i' + (k === step ? ' class="on"' : '') + '></i>';
+    return '<div class="top"><div><h3>' + title + '</h3><p><span class="steps">' + dots + '</span>' + name + '</p></div>' +
+      '<div class="btns"><div class="ib" data-a="wback">' + ic('back') + '</div><div class="ib" data-a="close">' + ic('close') + '</div></div></div>';
+  };
+  var tiles = function (kind, ent, opts, cur, usual, three) {
+    var h = '<div class="wzs' + (three ? ' three' : '') + '">';
+    for (var k = 0; k < opts.length; k++) h += '<div class="wz' + (opts[k] === cur ? ' on' : '') + (opts[k] === usual ? ' usual' : '') + '" data-a="' + kind + '" data-id="' + esc(ent) + '" data-v="' + esc(opts[k]) + '">' + esc(lab(opts[k])) + '</div>';
+    return h + '</div>';
+  };
   var body = '';
   if (sh.indexOf('room:') === 0) {
     var r = UI.rooms[+sh.slice(5)], e = r.climate, on = roomOn(r);
@@ -439,46 +495,69 @@ function sheetHtml(al) {
       (modes.length ? '<div class="sl">Mode</div>' + seg('mode', e, modes.slice(0, 5), S(e)) : '') +
       (fm.length ? '<div class="sl">Fan</div>' + seg('fan', e, fm.slice(0, 5), A(e, 'fan_mode')) : '') +
       '<div class="pill' + (on ? '' : ' out') + cls(e) + '" data-a="toggle" data-id="' + sh.slice(5) + '" style="margin-top:6px">' + ic('power') + (on ? 'Turn off' : 'Turn on') + '</div>';
+  } else if (sh === 'vacuum' && vacWizard() && vac.step) {
+    var mode = vacMode(), s1 = vacStep(1)[0], s3 = vacStep(3)[0], s2 = vacStep(2), picked = [];
+    if (vac.step === 1) {
+      body = wtop('Vacuum', 1, 'Mode') + '<div class="sl">What should it do?</div>' + tiles('vpick', s1.entity, A(s1.entity, 'options') || [], vac.pick[s1.entity], s1.usual);
+    } else if (vac.step === 2) {
+      body = wtop('Vacuum', 2, 'Power');
+      for (i = 0; i < s2.length; i++) {
+        var w2 = s2[i], off = w2.offFor && w2.offFor.indexOf(mode) > -1;
+        body += '<div class="sl">' + esc(w2.label) + '</div>' + (vacSkip(w2, mode)
+          ? '<div class="seg sm dis"><div>' + (off ? 'Not used for ' + esc(lab(mode).toLowerCase()) : 'Not available right now') + '</div></div>'
+          : seg('vpick', w2.entity, A(w2.entity, 'options'), vac.pick[w2.entity], w2.usual, true));
+      }
+      body += '<div class="pill" data-a="wnext" style="margin-top:14px">Next</div>';
+    } else {
+      var all = UI.vacuum.settings;
+      for (i = 0; i < all.length; i++) if (all[i].step && all[i].step < 3 && !vacSkip(all[i], mode)) picked.push(lab(vac.pick[all[i].entity]));
+      body = wtop('Vacuum', 3, 'Route') + '<div class="vline">' + esc(picked.join(' · ')) + '</div><div class="sl">Tap a route to start cleaning</div>' +
+        tiles('vroute', s3.entity, A(s3.entity, 'options') || [], vac.pick[s3.entity], s3.usual);
+    }
   } else if (sh === 'vacuum') {
-    var V2 = UI.vacuum, vs = S(V2.entity), lc = lastClean(), rows = '';
+    var V2 = UI.vacuum, vs = S(V2.entity), lc = lastClean(), rows = '', wiz = vacWizard(), now2 = [];
     for (i = 0; i < V2.settings.length; i++) {
       var st = V2.settings[i], opts = A(st.entity, 'options') || [];
       if (bad(S(st.entity)) || !opts.length) continue;
+      // With the wizard, its settings show as one line; the others (e.g. Floor) keep their row
+      if (wiz && st.step) { now2.push(lab(S(st.entity))); continue; }
       rows += '<div class="sl">' + esc(st.label) + '</div>' + seg('vset', st.entity, opts, S(st.entity), st.usual, true);
     }
     var usual = vacUsual(), busy = vs === 'cleaning' || vs === 'returning';
     body = top('Vacuum', esc(lab(vs)) + (N(V2.battery) !== null ? ' · battery ' + N(V2.battery) + '%' : '') + (lc ? ' · last clean ' + ago(lc) : '')) +
-      '<div class="vline">Underlined = usual. Changes apply to the robot right away.</div>' + rows +
+      (wiz ? '<div class="vline">Set now: ' + esc(now2.join(' · ')) + '</div>' + (rows ? '<div class="vline">Underlined = usual. Changes apply right away.</div>' + rows : '')
+        : '<div class="vline">Underlined = usual. Changes apply to the robot right away.</div>' + rows) +
       // WHY: a shortcut from the vacuum's own app is the usual clean, so it gets the filled button; Start uses the settings above
       '<div class="two three">' +
       (V2.shortcut ? '<div class="pill' + cls(V2.shortcut.entity) + '" data-a="vshort">' + esc(V2.shortcut.name) + '</div>' : '') +
-      '<div class="pill' + (V2.shortcut ? ' out' : '') + cls(V2.entity) + '" data-a="vacStart">' + (busy ? 'Cleaning' : V2.shortcut ? 'Start' : usual ? 'Start usual' : 'Start custom') + '</div>' +
+      '<div class="pill' + (V2.shortcut ? ' out' : '') + cls(V2.entity) + '" data-a="vacStart">' + (busy ? 'Cleaning' : wiz ? 'Start usual' : V2.shortcut ? 'Start' : usual ? 'Start usual' : 'Start custom') + '</div>' +
       '<div class="pill out" data-a="vacDock">Dock</div></div>' +
-      (usual ? '' : '<div class="reset" data-a="vusual">Back to usual settings</div>');
+      (wiz ? '<div class="pill out" data-a="vchoose" style="margin-top:8px">Choose mode, power, route</div>'
+        : usual ? '' : '<div class="reset" data-a="vusual">Back to usual settings</div>');
   } else if (sh === 'dish') {
-    var D = UI.dishwasher, ds = S(D.state), progs = A(D.selected, 'options') || [], cur2 = dish.prog || (bad(S(D.selected)) ? D.usual : S(D.selected));
-    var pr = '', a1 = [], a2 = [];
-    for (i = 0; i < progs.length; i++) if (progs[i].indexOf('machine_care') < 0) (a1.length < 4 ? a1 : a2).push(progs[i]);
-    pr = seg('dprog', '', a1, cur2, D.usual, true) + (a2.length ? seg('dprog', '', a2, cur2, D.usual, true) : '');
-    var tg = '';
-    for (i = 0; i < D.options.length; i++) {
-      var o = D.options[i], os = S(o.entity);
-      tg += '<div class="tg' + (os === 'on' ? ' on' : '') + (bad(os) ? ' dis' : '') + cls(o.entity) + '" data-a="dopt" data-id="' + i + '">' + esc(o.label) + '</div>';
-    }
-    var wh = [];
-    for (i = 0; i < D.startTimes.length; i++) wh.push(String(i));
-    var whs = '<div class="seg sm">';
-    for (i = 0; i < D.startTimes.length; i++) whs += '<div class="' + (dish.when === i ? 'on' : '') + '" data-a="dwhen" data-v="' + i + '">' + esc(D.startTimes[i][0]) + '</div>';
-    whs += '</div>';
+    var D = UI.dishwasher, ds = S(D.state), cur2 = dish.prog || (bad(S(D.selected)) ? D.usual : S(D.selected));
     var remote = S(D.remoteStart) === 'on', running = ds === 'run' || ds === 'delayedstart', fin = parseISO(S(D.finish)), prog = N(D.progress);
-    var sub = running ? esc(lab(ds)) + ' · ' + esc(lab(S(D.active))) + (fin ? ' · ends ' + hm(fin) : '') + (prog !== null ? ' · ' + prog + '%' : '') : esc(lab(ds)) + ' · remote start ' + (remote ? 'on' : 'off');
-    var startLbl = D.startTimes[dish.when][1] ? 'Start ' + D.startTimes[dish.when][0] : 'Start now';
-    body = top('Dishwasher', sub) +
-      '<div class="sl">Program · usual ' + esc(lab(D.usual)) + '</div>' + pr +
-      '<div class="sl">Options · usually all off</div><div class="tgs">' + tg + '</div>' +
-      '<div class="sl">Start</div>' + whs +
-      (remote || running ? '' : '<div class="vline">Press remote start on the dishwasher first.</div>') +
-      '<div class="two"><div class="pill' + (remote && !running ? '' : ' dis') + cls(D.active) + '" data-a="dstart">' + ic('dish') + esc(startLbl) + '</div><div class="pill out' + cls(D.stop) + '" data-a="dstop">Stop</div></div>';
+    var note = remote || running ? '' : '<div class="vline">Press remote start on the dishwasher first.</div>';
+    if (dish.step === 1) {
+      body = wtop('Dishwasher', 1, 'Program') + '<div class="sl">Underlined = usual</div>' + tiles('dprog', '', A(D.selected, 'options') || [], cur2, D.usual, true);
+    } else if (dish.step === 2) {
+      var rows2 = '';
+      for (i = 0; i < D.options.length; i++) {
+        var o = D.options[i], os = S(o.entity);
+        rows2 += '<div class="orow' + (os === 'on' ? ' on' : '') + (bad(os) ? ' dis' : '') + cls(o.entity) + '" data-a="dopt" data-id="' + i + '"><span class="tick"></span>' + esc(o.label) + (bad(os) ? '<small>not for this program</small>' : '') + '</div>';
+      }
+      body = wtop('Dishwasher', 2, 'Options') + '<div class="sl">' + esc(lab(cur2)) + ' · usually all off</div>' + rows2 + '<div class="pill" data-a="wnext" style="margin-top:10px">Next</div>';
+    } else if (dish.step === 3) {
+      var sum = [lab(cur2)], whs = '<div class="wzs">';
+      for (i = 0; i < D.options.length; i++) if (S(D.options[i].entity) === 'on') sum.push(D.options[i].label);
+      for (i = 0; i < D.startTimes.length; i++) whs += '<div class="wz" data-a="dwhen" data-v="' + i + '">' + esc(D.startTimes[i][0]) + '</div>';
+      body = wtop('Dishwasher', 3, 'Start') + '<div class="vline">' + esc(sum.join(' · ')) + '</div>' + note + '<div class="sl">Tap when it starts</div>' + whs + '</div>';
+    } else {
+      var sub = running ? esc(lab(ds)) + ' · ' + esc(lab(S(D.active))) + (fin ? ' · ends ' + hm(fin) : '') + (prog !== null ? ' · ' + prog + '%' : '') : esc(lab(ds)) + ' · remote start ' + (remote ? 'on' : 'off');
+      body = top('Dishwasher', sub) + '<div class="vline">Usual: ' + esc(lab(D.usual)) + ', starts now.</div>' + note +
+        '<div class="two three"><div class="pill' + (remote && !running ? '' : ' dis') + cls(D.active) + '" data-a="dstart">Start usual</div>' +
+        '<div class="pill out" data-a="dchoose">Choose</div><div class="pill out' + cls(D.stop) + '" data-a="dstop">Stop</div></div>';
+    }
   } else if (sh.indexOf('cam:') === 0) {
     var cm = UI.cameras[+sh.slice(4)];
     if (!view.camT) view.camT = now();
@@ -553,13 +632,23 @@ function setTemp(e, delta) {
   render();
 }
 
+// Start a program now (at = null) or at "HH:MM"; false if the dishwasher is not ready for a remote start
+function dishStart(prog, at) {
+  var D = UI.dishwasher;
+  if (S(D.remoteStart) !== 'on') { say('Press remote start on the dishwasher first'); return false; }
+  if (at) act(D.delay, 'number', secondsUntil(at));
+  // WHY: the delay must be set before the program starts, so the start call waits a moment
+  setTimeout(function () { act(D.active, 'select', prog); }, at ? 1500 : 0);
+  return true;
+}
+
 function tap(a, id, v) {
   var D = UI.dishwasher, i;
   switch (a) {
     case 'wake': view.idle = false; break;
     case 'page': view.page = v; view.sheet = null; view.dialog = null; break;
     // WHY: the still's URL is fixed when the sheet opens, so live-data redraws don't reload the picture
-    case 'open': if (id.indexOf('cam:') === 0) view.camT = now(); view.sheet = id; if (id === 'dish') dish.prog = null; break;
+    case 'open': if (id.indexOf('cam:') === 0) view.camT = now(); view.sheet = id; dish.step = 0; dish.prog = null; vac.step = 0; break;
     case 'close': view.sheet = null; view.dialog = null; break;
     case 'night':
       view.night = !view.night;
@@ -579,20 +668,25 @@ function tap(a, id, v) {
     case 'vusual':
       for (i = 0; i < UI.vacuum.settings.length; i++) { var st = UI.vacuum.settings[i]; if (!bad(S(st.entity)) && S(st.entity) !== st.usual) act(st.entity, 'select', st.usual); }
       return;
-    case 'vacStart': act(UI.vacuum.entity, 'start'); return;
+    case 'vacStart': if (vacWizard()) act(UI.vacuum.entity, 'start_with', vacPicks(true)); else act(UI.vacuum.entity, 'start'); return;
+    case 'vchoose':
+      // The wizard starts from what the robot is set to now
+      for (i = 0; i < UI.vacuum.settings.length; i++) { var ws = UI.vacuum.settings[i]; if (ws.step) vac.pick[ws.entity] = bad(S(ws.entity)) ? ws.usual : S(ws.entity); }
+      vac.step = 1; break;
+    case 'vpick': vac.pick[id] = v; if (vac.step === 1) vac.step = 2; break;
+    // WHY: tapping a route is the last choice, so it starts the clean (like the Sticky); the server sets each setting, then starts
+    case 'vroute': vac.pick[id] = v; vac.step = 0; act(UI.vacuum.entity, 'start_with', vacPicks(false)); return;
+    case 'wback': if (view.sheet === 'dish') dish.step--; else vac.step--; break;
+    case 'wnext': if (view.sheet === 'dish') dish.step++; else vac.step++; break;
     case 'ack': var ak = loadAck(); ak[v] = true; saveAck(ak); break;
     case 'vshort': act(UI.vacuum.shortcut.entity, 'press'); return;
     case 'vacDock': act(UI.vacuum.entity, 'dock'); return;
-    case 'dprog': dish.prog = v; break;
+    case 'dchoose': dish.prog = bad(S(D.selected)) ? D.usual : S(D.selected); dish.step = 1; break;
+    // WHY: the dishwasher only offers the options that fit the selected program, so select it before showing the options
+    case 'dprog': dish.prog = v; dish.step = 2; act(D.selected, 'select', v); return;
     case 'dopt': var o = D.options[+id]; if (bad(S(o.entity))) return; act(o.entity, 'switch', S(o.entity) === 'on' ? 0 : 1); return;
-    case 'dwhen': dish.when = +v; break;
-    case 'dstart':
-      if (S(D.remoteStart) !== 'on') { say('Press remote start on the dishwasher first'); break; }
-      var prog = dish.prog || (bad(S(D.selected)) ? D.usual : S(D.selected)), at = D.startTimes[dish.when][1];
-      if (at) act(D.delay, 'number', secondsUntil(at));
-      // WHY: the delay must be set before the program starts, so the start call waits a moment
-      setTimeout(function () { act(D.active, 'select', prog); }, at ? 1500 : 0);
-      return;
+    case 'dwhen': if (dishStart(dish.prog || D.usual, D.startTimes[+v][1])) dish.step = 0; break;
+    case 'dstart': dishStart(D.usual, null); break;
     case 'dstop': act(D.stop, 'press'); return;
     default: return;
   }

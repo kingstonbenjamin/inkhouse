@@ -12,6 +12,14 @@ A touch control panel for Home Assistant on a jailbroken Kindle. Big e-ink butto
 |---|---|---|---|
 | ![Room sheet](docs/screenshots/room.png) | ![Vacuum sheet](docs/screenshots/vacuum.png) | ![Dishwasher sheet](docs/screenshots/dishwasher.png) | ![Alerts sheet with a Dismiss button](docs/screenshots/alerts.png) |
 
+| Dishwasher: program | Options | Start time |
+|---|---|---|
+| ![Dishwasher wizard, step 1: program](docs/screenshots/dishwasher-1-program.png) | ![Dishwasher wizard, step 2: options](docs/screenshots/dishwasher-2-options.png) | ![Dishwasher wizard, step 3: tap a start time](docs/screenshots/dishwasher-3-start.png) |
+
+| Vacuum: mode | Suction and mop | Route |
+|---|---|---|
+| ![Vacuum wizard, step 1: mode](docs/screenshots/vacuum-1-mode.png) | ![Vacuum wizard, step 2: suction and mop wetness](docs/screenshots/vacuum-2-power.png) | ![Vacuum wizard, step 3: tap a route to start](docs/screenshots/vacuum-3-route.png) |
+
 | Tap feedback | Half-degree steps | Confirm unlock | Confirm all off |
 |---|---|---|---|
 | ![A tapped tile shows a dashed border while sending](docs/screenshots/sending.png) | ![Setpoint in 0.5 degree steps](docs/screenshots/room-half-degree.png) | ![Unlock confirmation](docs/screenshots/unlock-confirm.png) | ![All AC off confirmation](docs/screenshots/all-off-confirm.png) |
@@ -32,11 +40,12 @@ An old Kindle makes a great wall or bedside panel: it costs almost nothing, last
 
 - **Three pages:** Control (AC tiles, all AC off, door, vacuum, dishwasher, routines), House (door, vacuum, garden, Wi-Fi, cameras, dishwasher, alerts) and Energy (AC energy today, room temperatures and humidity).
 - **Room sheet:** big setpoint with − / + buttons in the AC's own step (for example 0.5°), mode and fan speed.
-- **Usual settings:** the vacuum and dishwasher sheets underline the settings you normally use, so one tap starts your usual run. A vacuum app shortcut can be its own button.
+- **Usual settings:** the vacuum and dishwasher sheets have a Start usual button, and underline the settings you normally use. A vacuum app shortcut can be its own button.
+- **Wizards:** Choose walks through one question per screen, with step dots. Dishwasher: program, options (the ones the program doesn't offer are greyed out), then tap a start time. Vacuum: mode, suction and mop wetness (skipped when the mode doesn't mop), then tap a route to start. The choices are whatever Home Assistant offers right now.
 - **Alerts:** AC left on too long, NAS too hot, low lock battery, internet down, vacuum maintenance due. Dismiss one and its badge goes away until it fires again.
 - **Camera stills on tap,** resized by Home Assistant to about 15–20 KB.
 - **Made for e-ink:** black, paper and one gray. No animation (no ghosting). Every tap target is at least about 10 mm. Idle clock after 2 minutes. Night mode.
-- **Fast:** the page is one file, about 14 KB compressed. State updates are about 1.5 KB and arrive within a second of a change (long polling). Taps show "sending" at once, then Home Assistant confirms.
+- **Fast:** the page is one file, about 16 KB compressed. State updates are about 1.5 KB and arrive within a second of a change (long polling). Taps show "sending" at once, then Home Assistant confirms.
 - **Kindle-proof:** plain ES5 JavaScript for the Kindle's old browser. Times are shown in Home Assistant's time zone even though the Kindle browser runs on UTC.
 
 ## How it works
@@ -87,7 +96,7 @@ Any jailbroken Kindle with a browser (see [kindlemodding.org](https://kindlemodd
 
 - `read`: extra entities to show (sensors and so on).
 - `control`: entity → list of allowed actions. Anything not listed here can't be changed from the panel.
-- `ui`: what goes where: `rooms` (name, climate, hours and humidity sensors, alert hours), `lock`, `vacuum` (settings with their usual value, sensor reset, shortcut), `dishwasher` (program selects, options, start times, usual program), `routines`, `garden`, `wifi`, `nas`, `cameras`, `energy`, alert thresholds, and `labels` to rename raw option values (for example `"Map 1": "Downstairs"`).
+- `ui`: what goes where: `rooms` (name, climate, hours and humidity sensors, alert hours), `lock`, `vacuum` (settings with their usual value, sensor reset, shortcut; give settings `"step": 1`, `2` or `3` to build the wizard, `"offFor": ["sweeping"]` to skip one for a mode, and allow `start_with` on the vacuum in `control`), `dishwasher` (program selects, options, start times, usual program), `routines`, `garden`, `wifi`, `nas`, `cameras`, `energy`, alert thresholds, and `labels` to rename raw option values (for example `"Map 1": "Downstairs"`).
 
 Sections you leave out disappear from the panel.
 
