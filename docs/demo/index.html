@@ -269,10 +269,11 @@ function poll(fresh) {
 }
 
 // A tap marks the entity "sending" until HA reports a change, or flags it after 8 s
-function act(e, verb, v, keepPending) {
+// also: a second entity whose change also confirms the tap (the vacuum, when its shortcut button may start the usual clean instead)
+function act(e, verb, v, keepPending, also) {
   if (!e) return;
   var token = now();
-  pend[e] = { snap: JSON.stringify(E(e)), t: token }; delete errs[e];
+  pend[e] = { snap: JSON.stringify(E(e)), t: token, also: also, alsoSnap: also ? JSON.stringify(E(also)) : null }; delete errs[e];
   xhr('POST', 'api/action', { e: e, 'do': verb, v: v }, function (st, d) {
     if (!d || !d.ok) { delete pend[e]; errs[e] = 1; say((d && d.error) || 'Could not reach the panel server'); render(); return; }
     if (d.dry && !keepPending) { delete pend[e]; render(); }
@@ -283,7 +284,7 @@ function act(e, verb, v, keepPending) {
   render();
 }
 function settle() {
-  for (var e in pend) if (pend.hasOwnProperty(e) && JSON.stringify(E(e)) !== pend[e].snap) { delete pend[e]; delete errs[e]; }
+  for (var e in pend) if (pend.hasOwnProperty(e) && (JSON.stringify(E(e)) !== pend[e].snap || (pend[e].also && JSON.stringify(E(pend[e].also)) !== pend[e].alsoSnap))) { delete pend[e]; delete errs[e]; }
   for (var c in localTemp) if (localTemp.hasOwnProperty(c) && A(c, 'temperature') === localTemp[c] && !tempTimer[c]) delete localTemp[c];
 }
 function say(msg) { toast = msg; clearTimeout(toastTimer); toastTimer = setTimeout(function () { toast = null; render(); }, 4000); }
@@ -679,7 +680,7 @@ function tap(a, id, v) {
     case 'wback': if (view.sheet === 'dish') dish.step--; else vac.step--; break;
     case 'wnext': if (view.sheet === 'dish') dish.step++; else vac.step++; break;
     case 'ack': var ak = loadAck(); ak[v] = true; saveAck(ak); break;
-    case 'vshort': act(UI.vacuum.shortcut.entity, 'press'); return;
+    case 'vshort': act(UI.vacuum.shortcut.entity, 'press', undefined, false, UI.vacuum.entity); return;
     case 'vacDock': act(UI.vacuum.entity, 'dock'); return;
     case 'dchoose': dish.prog = bad(S(D.selected)) ? D.usual : S(D.selected); dish.step = 1; break;
     // WHY: the dishwasher only offers the options that fit the selected program, so select it before showing the options

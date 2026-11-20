@@ -115,8 +115,9 @@ function connect() {
       m.success ? p.resolve(m.result) : p.reject(new Error(m.error && m.error.message || 'HA error'));
     } else if (m.type === 'event' && m.event && m.event.event_type === 'state_changed') {
       const d = m.event.data;
-      if (!readSet.has(d.entity_id) || !d.new_state) return;
-      const next = slim(d.new_state);
+      if (!readSet.has(d.entity_id)) return;
+      // WHY: HA sends no new state when an entity is removed (the vacuum app's shortcut does this while the robot's cloud link is down), so mark it unavailable
+      const next = d.new_state ? slim(d.new_state) : { s: 'unavailable', a: {}, c: Date.now() / 1000 | 0 };
       const prev = cache[d.entity_id];
       // WHY: HA fires state_changed for attribute noise too; only wake the panel when what it shows changed
       if (prev && prev.s === next.s && JSON.stringify(prev.a) === JSON.stringify(next.a)) return;
@@ -182,6 +183,17 @@ function checkOption(e, v) {
   return v;
 }
 
+// The vacuum app's shortcut drops out of HA while the robot's cloud link is down. Its button then starts the
+// usual clean (the vacuum settings' usual values, like Start usual), so a tap never silently does nothing.
+function shortcutFallback(e, verb) {
+  const vac = (config.ui || {}).vacuum || {};
+  if (verb !== 'press' || !vac.shortcut || vac.shortcut.entity !== e || (cache[e] && cache[e].s !== 'unavailable')) return null;
+  const usual = {};
+  for (const st of vac.settings || []) if (st.usual !== undefined) usual[st.entity] = st.usual;
+  console.log('Shortcut not in HA right now, starting the usual clean instead');
+  return SEQUENCES.start_with(vac.entity, usual);
+}
+
 let recent = [];
 async function runAction(body) {
   const { e, v } = body, verb = body.do;
@@ -192,7 +204,7 @@ async function runAction(body) {
   if (recent.length >= 6) return { code: 429, out: { ok: false, error: 'too many taps' } };
   recent.push(now);
   let calls;   // [[entity, domain, service, data], ...]
-  try { calls = SEQUENCES[verb] ? SEQUENCES[verb](e, v) : [[e, ...VERBS[verb](e, v)]]; }
+  try { calls = shortcutFallback(e, verb) || (SEQUENCES[verb] ? SEQUENCES[verb](e, v) : [[e, ...VERBS[verb](e, v)]]); }
   catch (err) { return { code: err.message === 'not allowed' ? 403 : 400, out: { ok: false, error: err.message } }; }
   for (let i = 0; i < calls.length; i++) {
     const [target, domain, service, data] = calls[i];
